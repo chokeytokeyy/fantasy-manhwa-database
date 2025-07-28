@@ -293,7 +293,7 @@ const ManhwaDatabase = () => {
             </div>
 
             <div className="space-y-4">
-              
+              <a
                 href="https://mega.nz/file/MVxm3byR#C_znJXlRrxVPxwmglutPaBFkOTVNfrAwbnkiDz_Or50"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -343,7 +343,7 @@ const ManhwaDatabase = () => {
               </p>
             </div>
             
-            
+            <a
               href="https://mega.nz/file/MVxm3byR#C_znJXlRrxVPxwmglutPaBFkOTVNfrAwbnkiDz_Or50"
               target="_blank"
               rel="noopener noreferrer"
@@ -613,8 +613,27 @@ const ManhwaDatabase = () => {
             This database is inspired by the amazing community-driven manhwa spreadsheet
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            
+            <a
               href="https://www.reddit.com/r/manhwa/comments/1ioddo5/final_manhwa_list_spreadsheet/"
               target="_blank"
               rel="noopener noreferrer"
-              className="px-6 py-3
+              className="px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors"
+            >
+              📱 Reddit Thread
+            </a>
+            <a
+              href="https://docs.google.com/spreadsheets/d/1ZluFOVtJCv-cQLXWhmCLNoZFIMLV0eTrqozwyEb1zw8/edit?usp=drivesdk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+            >
+              📊 Google Sheet
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ManhwaDatabase;
