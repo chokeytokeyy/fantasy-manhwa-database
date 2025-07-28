@@ -1,19 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Upload, User, BookOpen, Star, Calendar, Hash, Filter, X } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
-
-// Supabase configuration - Use environment variables
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tlfakcdpciitctqbzpns.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsZmFrY2RwY2lpdGN0cWJ6cG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgyNzU2MTEsImV4cCI6MjA1Mzg1MTYxMX0.qXl46_cxeAGMH6oT0CZQ5Cx-X0iKD7Y3P43m3Ap9D-c';
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { Search, Upload, BookOpen, Star, Calendar, Hash, Filter, X, FileText } from 'lucide-react';
 
 const ManhwaDatabase = () => {
   const [manhwaData, setManhwaData] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [isAdminMode, setIsAdminMode] = useState(false);
-  const [adminPassword, setAdminPassword] = useState('');
-  const [showPasswordInput, setShowPasswordInput] = useState(false);
   const [selectedFilters, setSelectedFilters] = useState({
     genres: [],
     categories: [],
@@ -22,43 +12,19 @@ const ManhwaDatabase = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(true);
 
-  // Load data from Supabase on component mount
+  // Load sample data on component mount
   useEffect(() => {
-    loadManhwaData();
+    loadSampleData();
   }, []);
-
-  const loadManhwaData = async () => {
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from('manhwa')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading manhwa data:', error);
-        loadSampleData(); // Fallback to sample data
-      } else if (data && data.length > 0) {
-        console.log(`Loaded ${data.length} manhwa entries from database`);
-        setManhwaData(data);
-      } else {
-        console.log('No data in database, loading sample data');
-        loadSampleData();
-      }
-    } catch (error) {
-      console.error('Error connecting to database:', error);
-      loadSampleData();
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const loadSampleData = () => {
     const sampleData = [
       {
         title: "0.0000001% Demon King",
-        synopsis: "The 72 Demon Kings, who received the order to destroy the earth, each went through a trial by the Great Demon King Astrea. Those who passed the trial earned the title of Demon King, and each Demon King was granted special powers by the Great Demon King.",
+        synopsis: "The 72 Demon Kings, who received the order to destroy the earth, each went through a trial by the Great Demon King Astrea. Those who passed the trial earned the title of Demon King, and each Demon King was granted special powers by the Great Demon King. So far, each Demon King had been granted extraordinary abilities. When Karos became a Demon King, he received a power from the Great Demon King, but… 'Great Demon King, no matter how much I think about it, there is a problem with my power.' 'Problem?' Among the Demon Kings with extraordinary abilities… Karos received the [Gacha] ability. 'Gacha as the power of a Demon King? How am I supposed to rule the world with Gacha?!'",
         genres: ["Action", "Comedy", "Fantasy", "Shounen"],
         categories: ["Politics", "Unique Cheat", "Weak to Strong"],
         authors: ["Yuwol", "Palanyeong"],
@@ -69,7 +35,7 @@ const ManhwaDatabase = () => {
       },
       {
         title: "1 Second",
-        synopsis: "Every second counts when you're a first responder. But what if you could see a glimpse into the future? Hosu is a firefighter with the supernatural ability to do just that.",
+        synopsis: "Every second counts when you're a first responder. But what if you could see a glimpse into the future? Hosu is a firefighter with the supernatural ability to do just that. There's just one catch. It only works when he feels extreme stress under pressure. Will knowing what will happen ahead of time help Hosu extinguish fires before they completely destroy homes and lives? And will he learn to wield his ability when he needs it most?",
         genres: ["Action", "Drama", "Supernatural"],
         categories: ["Friendship", "Modern World Cheat"],
         authors: ["SiNi"],
@@ -80,7 +46,7 @@ const ManhwaDatabase = () => {
       },
       {
         title: "1331",
-        synopsis: "Yoo Min, a full time department store worker, begins to feel skeptical about her own life. She decides to quit her job due to a conflict with her manager.",
+        synopsis: "Yoo Min, a full time department store worker, begins to feel skeptical about her own life. She decides to quit her job due to a conflict with her manager. However, when she enters the manager's office, she comes face to face with the manager who has now turned into a monster. Yoo Min immediately runs away from the manager, but encounters another monster and faces danger once again. Outside the department store, a world experiencing doom had already begun unfolding.",
         genres: ["Drama", "Fantasy", "Horror", "Psychological"],
         categories: ["Apocalypse", "Female Protagonist", "Survival"],
         authors: ["Bora Giraffe"],
@@ -93,58 +59,12 @@ const ManhwaDatabase = () => {
     setManhwaData(sampleData);
   };
 
-  const handleAdminLogin = () => {
-    if (adminPassword === 'manhwa_admin_2025') {
-      setIsAdminMode(true);
-      setShowPasswordInput(false);
-      setAdminPassword('');
-    } else {
-      alert('Invalid password');
-    }
-  };
-
-  const saveManhwaToDatabase = async (manhwaArray) => {
-    try {
-      console.log('Saving to database:', manhwaArray.length, 'entries');
-      
-      // Ensure we're working with an array
-      const dataToInsert = Array.isArray(manhwaArray) ? manhwaArray : [manhwaArray];
-      
-      // Clear existing data first
-      const { error: deleteError } = await supabase
-        .from('manhwa')
-        .delete()
-        .neq('id', 0); // Delete all rows
-
-      if (deleteError) {
-        console.error('Error clearing existing data:', deleteError);
-      }
-
-      // Insert new data - ensure it's an array
-      const { data, error } = await supabase
-        .from('manhwa')
-        .insert(dataToInsert);
-
-      if (error) {
-        console.error('Error saving to database:', error);
-        throw error;
-      }
-
-      console.log('Successfully saved to database');
-      return true;
-    } catch (error) {
-      console.error('Database save failed:', error);
-      return false;
-    }
-  };
-
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
+  const handleFileUpload = (file) => {
     if (!file) return;
 
     setIsLoading(true);
     const reader = new FileReader();
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       try {
         const csv = e.target.result;
         console.log('Processing CSV file...');
@@ -198,18 +118,8 @@ const ManhwaDatabase = () => {
         }
 
         if (processedData.length > 0) {
-          // Save to database - processedData is already an array
-          const saved = await saveManhwaToDatabase(processedData);
-          
-          if (saved) {
-            // Reload data from database to ensure sync
-            await loadManhwaData();
-            alert(`Successfully uploaded ${processedData.length} manhwa entries to the database! Data is now permanently saved.`);
-          } else {
-            // Fallback to local storage
-            setManhwaData(processedData);
-            alert(`Uploaded ${processedData.length} manhwa entries locally. Database save failed, but data is still available.`);
-          }
+          setManhwaData(processedData);
+          alert(`Successfully loaded ${processedData.length} manhwa entries!`);
         } else {
           alert('No valid manhwa data found. Please check the CSV format.');
         }
@@ -221,6 +131,26 @@ const ManhwaDatabase = () => {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    const csvFile = files.find(file => file.name.toLowerCase().endsWith('.csv'));
+    if (csvFile) {
+      handleFileUpload(csvFile);
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
   };
 
   // Helper function to clean CSV fields
@@ -325,189 +255,155 @@ const ManhwaDatabase = () => {
     }
   };
 
-  // Styles
-  const headerStyle = {
-    background: 'linear-gradient(to right, #92400e, #ea580c)',
-    color: 'white',
-    padding: '24px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-  };
-
-  const containerStyle = {
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '32px 16px',
-    minHeight: '100vh',
-    background: 'linear-gradient(to bottom right, #fef3c7, #fed7aa)'
-  };
-
-  const cardStyle = {
-    background: 'white',
-    borderRadius: '12px',
-    padding: '24px',
-    marginBottom: '24px',
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    border: '2px solid #fed7aa'
-  };
-
-  const searchStyle = {
-    width: '100%',
-    padding: '12px 12px 12px 40px',
-    border: '2px solid #fbbf24',
-    borderRadius: '8px',
-    fontSize: '16px',
-    outline: 'none'
-  };
-
-  const buttonStyle = {
-    padding: '8px 16px',
-    background: '#d97706',
-    color: 'white',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    fontWeight: '500'
-  };
-
-  const genreTagStyle = {
-    display: 'inline-block',
-    padding: '4px 8px',
-    background: '#fef3c7',
-    color: '#92400e',
-    fontSize: '12px',
-    borderRadius: '20px',
-    margin: '2px',
-    border: '1px solid #fbbf24'
-  };
-
   if (isLoading) {
     return (
-      <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #fef3c7, #fed7aa)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center' }}>
-          <BookOpen size={64} color="#d97706" style={{ margin: '0 auto 16px', animation: 'spin 2s linear infinite' }} />
-          <h2 style={{ color: '#92400e', marginBottom: '8px' }}>Loading Manhwa Database...</h2>
-          <p style={{ color: '#6b7280' }}>Connecting to Supabase...</p>
+      <div className="min-h-screen bg-gradient-to-br from-amber-100 to-orange-200 flex items-center justify-center">
+        <div className="text-center">
+          <BookOpen size={64} className="text-amber-600 mx-auto mb-4 animate-spin" />
+          <h2 className="text-amber-800 text-xl font-semibold mb-2">Processing CSV File...</h2>
+          <p className="text-gray-600">Please wait while we load your manhwa data</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #fef3c7, #fed7aa)' }}>
+    <div className="min-h-screen bg-gradient-to-br from-amber-100 to-orange-200">
+      {/* Welcome Modal */}
+      {showWelcomeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl border-2 border-amber-300">
+            <div className="text-center mb-6">
+              <BookOpen size={48} className="text-amber-600 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-amber-800 mb-2">Welcome to Fantasy Manhwa Archive!</h2>
+            </div>
+            
+            <div className="text-gray-700 space-y-3 mb-6">
+              <p className="text-sm">
+                ⚠️ <strong>Important Notice:</strong> This website is in its very early stages, so please understand that it's still under development.
+              </p>
+              
+              <p className="text-sm">
+                📂 <strong>Data Upload Required:</strong> To use this database, you need to upload the manhwa data file yourself. The website doesn't come pre-loaded with data.
+              </p>
+              
+              <p className="text-sm">
+                💾 <strong>Download the Data:</strong> Click the link below to download the latest manhwa database file, then upload it using the file upload section.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <a
+                href="https://mega.nz/file/MVxm3byR#C_znJXlRrxVPxwmglutPaBFkOTVNfrAwbnkiDz_Or50"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-block text-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
+              >
+                📥 Download Manhwa Database (MEGA)
+              </a>
+              
+              <button
+                onClick={() => setShowWelcomeModal(false)}
+                className="w-full px-6 py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors"
+              >
+                Got it, let's start!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <header style={headerStyle}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <BookOpen size={32} color="#fbbf24" />
-            <h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#fef3c7', fontFamily: 'Georgia, serif', margin: 0 }}>
+      <header className="bg-gradient-to-r from-amber-800 to-orange-600 text-white p-6 shadow-lg">
+        <div className="max-w-6xl mx-auto flex justify-between items-center flex-wrap">
+          <div className="flex items-center gap-3">
+            <BookOpen size={32} className="text-amber-200" />
+            <h1 className="text-3xl font-bold text-amber-100 font-serif">
               ⚔️ Fantasy Manhwa Archive ⚔️
             </h1>
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ fontSize: '12px', color: '#fed7aa' }}>
-              🗄️ Database Connected
-            </div>
-            {!isAdminMode ? (
-              <button
-                onClick={() => setShowPasswordInput(!showPasswordInput)}
-                style={{ ...buttonStyle, background: '#eab308' }}
-              >
-                <User size={16} style={{ display: 'inline', marginRight: '8px' }} />
-                Admin
-              </button>
-            ) : (
-              <div style={{ padding: '8px 16px', background: '#059669', borderRadius: '8px', color: 'white' }}>
-                <User size={16} style={{ display: 'inline', marginRight: '8px' }} />
-                Admin Mode
-              </div>
-            )}
+          <div className="text-amber-200 text-sm">
+            📖 {manhwaData.length} titles loaded
           </div>
         </div>
-
-        {/* Admin Login */}
-        {showPasswordInput && (
-          <div style={{ maxWidth: '1200px', margin: '16px auto 0', display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input
-              type="password"
-              value={adminPassword}
-              onChange={(e) => setAdminPassword(e.target.value)}
-              placeholder="Enter admin password"
-              style={{ padding: '8px 12px', borderRadius: '8px', border: 'none', flex: 1, maxWidth: '300px' }}
-              onKeyPress={(e) => e.key === 'Enter' && handleAdminLogin()}
-            />
-            <button onClick={handleAdminLogin} style={{ ...buttonStyle, background: '#059669' }}>
-              Login
-            </button>
-          </div>
-        )}
-
-        {/* File Upload (Admin Only) */}
-        {isAdminMode && (
-          <div style={{ 
-            maxWidth: '1200px', 
-            margin: '16px auto 0', 
-            padding: '16px', 
-            background: '#92400e', 
-            borderRadius: '8px',
-            border: '1px solid #fbbf24'
-          }}>
-            <h3 style={{ color: '#fef3c7', marginBottom: '8px', fontSize: '16px', fontWeight: '600' }}>
-              📜 Upload Manhwa Database to Supabase
-            </h3>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <input
-                type="file"
-                accept=".csv"
-                onChange={handleFileUpload}
-                disabled={isLoading}
-                style={{ 
-                  color: '#fef3c7',
-                  background: 'transparent',
-                  border: '1px solid #fbbf24',
-                  borderRadius: '4px',
-                  padding: '8px',
-                  flex: 1
-                }}
-              />
-              <Upload size={20} color="#fbbf24" />
-            </div>
-            <p style={{ fontSize: '12px', color: '#fed7aa', margin: '8px 0 0 0' }}>
-              {isLoading ? 'Uploading to database...' : 'Upload CSV file - data will be saved permanently to Supabase database'}
-            </p>
-          </div>
-        )}
       </header>
 
-      <div style={containerStyle}>
-        {/* Database Status */}
-        <div style={{ ...cardStyle, marginBottom: '16px', background: '#f0f9ff', border: '2px solid #0ea5e9' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ width: '8px', height: '8px', background: '#10b981', borderRadius: '50%' }}></div>
-            <span style={{ color: '#0369a1', fontWeight: '500' }}>
-              Connected to Supabase Database - All data is permanently saved
-            </span>
+      <div className="max-w-6xl mx-auto p-8">
+        {/* File Upload Section */}
+        <div className="bg-white rounded-xl p-6 mb-6 shadow-lg border-2 border-amber-200">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-amber-800 mb-2 flex items-center gap-2">
+                <Upload size={20} />
+                Upload Manhwa Database
+              </h3>
+              <p className="text-sm text-gray-600">
+                First, download the data file, then upload it here to load the manhwa database.
+              </p>
+            </div>
+            
+            <a
+              href="https://mega.nz/file/MVxm3byR#C_znJXlRrxVPxwmglutPaBFkOTVNfrAwbnkiDz_Or50"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all text-sm whitespace-nowrap"
+            >
+              📥 Download Data
+            </a>
+          </div>
+          
+          <div
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
+              isDragging 
+                ? 'border-amber-500 bg-amber-50' 
+                : 'border-amber-300 hover:border-amber-400 hover:bg-amber-50'
+            }`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+          >
+            <FileText size={48} className="text-amber-500 mx-auto mb-4" />
+            <p className="text-gray-700 mb-4">
+              Drag and drop your CSV file here, or click to browse
+            </p>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => handleFileUpload(e.target.files[0])}
+              className="hidden"
+              id="file-upload"
+            />
+            <label
+              htmlFor="file-upload"
+              className="inline-block px-6 py-3 bg-amber-600 text-white rounded-lg cursor-pointer hover:bg-amber-700 transition-colors"
+            >
+              Choose CSV File
+            </label>
+            <p className="text-sm text-gray-500 mt-2">
+              CSV files only • Data will be stored locally in your browser
+            </p>
           </div>
         </div>
 
         {/* Search and Filters */}
-        <div style={cardStyle}>
-          <div style={{ position: 'relative', marginBottom: '16px' }}>
-            <Search size={20} color="#d97706" style={{ position: 'absolute', left: '12px', top: '14px' }} />
+        <div className="bg-white rounded-xl p-6 mb-6 shadow-lg border-2 border-amber-200">
+          <div className="relative mb-4">
+            <Search size={20} className="absolute left-3 top-3.5 text-amber-600" />
             <input
               type="text"
               placeholder="🔍 Search by title, synopsis, genre, author..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={searchStyle}
+              className="w-full pl-12 pr-4 py-3 border-2 border-amber-300 rounded-lg text-base focus:outline-none focus:border-amber-500"
             />
           </div>
 
           {/* Filter Toggle */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div className="flex justify-between items-center mb-4">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              style={{ ...buttonStyle, display: 'flex', alignItems: 'center', gap: '8px' }}
+              className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
             >
               <Filter size={16} />
               {showFilters ? 'Hide Filters' : 'Show Filters'}
@@ -516,7 +412,7 @@ const ManhwaDatabase = () => {
             {Object.values(selectedFilters).some(arr => arr.length > 0) && (
               <button
                 onClick={clearAllFilters}
-                style={{ ...buttonStyle, background: '#dc2626', display: 'flex', alignItems: 'center', gap: '8px' }}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 <X size={16} />
                 Clear All
@@ -526,27 +422,20 @@ const ManhwaDatabase = () => {
 
           {/* Filters */}
           {showFilters && (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-              gap: '20px',
-              paddingTop: '16px',
-              borderTop: '1px solid #fed7aa'
-            }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 pt-4 border-t border-amber-200">
               {/* Genres */}
               <div>
-                <h4 style={{ fontWeight: '600', color: '#92400e', marginBottom: '8px', fontSize: '14px' }}>📚 Genres</h4>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                <h4 className="font-semibold text-amber-800 mb-2 text-sm">📚 Genres</h4>
+                <div className="flex flex-wrap gap-1">
                   {getUniqueValues('genres').map(genre => (
                     <button
                       key={genre}
                       onClick={() => toggleFilter('genres', genre)}
-                      style={{
-                        ...genreTagStyle,
-                        background: selectedFilters.genres.includes(genre) ? '#d97706' : '#fef3c7',
-                        color: selectedFilters.genres.includes(genre) ? 'white' : '#92400e',
-                        cursor: 'pointer'
-                      }}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFilters.genres.includes(genre)
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                      }`}
                     >
                       {genre}
                     </button>
@@ -556,18 +445,17 @@ const ManhwaDatabase = () => {
 
               {/* Categories */}
               <div>
-                <h4 style={{ fontWeight: '600', color: '#92400e', marginBottom: '8px', fontSize: '14px' }}>🏷️ Categories</h4>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                <h4 className="font-semibold text-amber-800 mb-2 text-sm">🏷️ Categories</h4>
+                <div className="flex flex-wrap gap-1">
                   {getUniqueValues('categories').map(category => (
                     <button
                       key={category}
                       onClick={() => toggleFilter('categories', category)}
-                      style={{
-                        ...genreTagStyle,
-                        background: selectedFilters.categories.includes(category) ? '#d97706' : '#fef3c7',
-                        color: selectedFilters.categories.includes(category) ? 'white' : '#92400e',
-                        cursor: 'pointer'
-                      }}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFilters.categories.includes(category)
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                      }`}
                     >
                       {category}
                     </button>
@@ -577,18 +465,17 @@ const ManhwaDatabase = () => {
 
               {/* Rating */}
               <div>
-                <h4 style={{ fontWeight: '600', color: '#92400e', marginBottom: '8px', fontSize: '14px' }}>⭐ Rating</h4>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                <h4 className="font-semibold text-amber-800 mb-2 text-sm">⭐ Rating</h4>
+                <div className="flex flex-wrap gap-1">
                   {getUniqueValues('rating').map(rating => (
                     <button
                       key={rating}
                       onClick={() => toggleFilter('rating', rating)}
-                      style={{
-                        ...genreTagStyle,
-                        background: selectedFilters.rating.includes(rating) ? '#d97706' : '#fef3c7',
-                        color: selectedFilters.rating.includes(rating) ? 'white' : '#92400e',
-                        cursor: 'pointer'
-                      }}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFilters.rating.includes(rating)
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                      }`}
                     >
                       {rating}
                     </button>
@@ -598,18 +485,17 @@ const ManhwaDatabase = () => {
 
               {/* Chapters */}
               <div>
-                <h4 style={{ fontWeight: '600', color: '#92400e', marginBottom: '8px', fontSize: '14px' }}>📖 Chapters</h4>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                <h4 className="font-semibold text-amber-800 mb-2 text-sm">📖 Chapters</h4>
+                <div className="flex flex-wrap gap-1">
                   {getUniqueValues('chapters').map(chapters => (
                     <button
                       key={chapters}
                       onClick={() => toggleFilter('chapters', chapters)}
-                      style={{
-                        ...genreTagStyle,
-                        background: selectedFilters.chapters.includes(chapters) ? '#d97706' : '#fef3c7',
-                        color: selectedFilters.chapters.includes(chapters) ? 'white' : '#92400e',
-                        cursor: 'pointer'
-                      }}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFilters.chapters.includes(chapters)
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                      }`}
                     >
                       {chapters}
                     </button>
@@ -619,39 +505,37 @@ const ManhwaDatabase = () => {
             </div>
           )}
           
-          <p style={{ color: '#92400e', fontWeight: '500', fontSize: '16px', margin: '16px 0 0 0' }}>
+          <p className="text-amber-800 font-medium text-lg mt-4">
             📖 Found {filteredData.length} manhwa titles
           </p>
         </div>
 
         {/* Manhwa Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredData.map((manhwa, index) => (
-            <div key={manhwa.id || index} style={cardStyle}>
+            <div key={index} className="bg-white rounded-xl p-6 shadow-lg border-2 border-amber-200">
               {/* Title and Rating */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#92400e', margin: 0, flex: 1 }}>
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-lg font-bold text-amber-800 flex-1 pr-2">
                   {manhwa.title}
                 </h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: getRatingColor(manhwa.rating) }}>
+                <div className="flex items-center gap-1" style={{ color: getRatingColor(manhwa.rating) }}>
                   <Star size={16} fill="currentColor" />
-                  <span style={{ fontSize: '14px', fontWeight: '500' }}>{manhwa.rating}</span>
+                  <span className="text-sm font-medium">{manhwa.rating}</span>
                 </div>
               </div>
 
               {/* Synopsis */}
-              <p style={{ color: '#374151', fontSize: '14px', marginBottom: '16px', lineHeight: '1.4' }}>
+              <p className="text-gray-700 text-sm mb-4 leading-relaxed line-clamp-3">
                 {manhwa.synopsis}
               </p>
 
               {/* Genres */}
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '12px', fontWeight: '600', color: '#92400e', marginBottom: '4px' }}>
-                  📚 Genres
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', marginBottom: '8px' }}>
+              <div className="mb-3">
+                <div className="text-xs font-semibold text-amber-800 mb-1">📚 Genres</div>
+                <div className="flex flex-wrap gap-1 mb-2">
                   {manhwa.genres && manhwa.genres.map((genre, i) => (
-                    <span key={i} style={{...genreTagStyle, background: '#fef3c7', color: '#92400e'}}>
+                    <span key={i} className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full border border-amber-300">
                       {genre}
                     </span>
                   ))}
@@ -660,12 +544,10 @@ const ManhwaDatabase = () => {
                 {/* Categories */}
                 {manhwa.categories && manhwa.categories.length > 0 && (
                   <>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#92400e', marginBottom: '4px' }}>
-                      🏷️ Categories
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px' }}>
+                    <div className="text-xs font-semibold text-amber-800 mb-1">🏷️ Categories</div>
+                    <div className="flex flex-wrap gap-1">
                       {manhwa.categories.map((category, i) => (
-                        <span key={i} style={{...genreTagStyle, background: '#e0f2fe', color: '#0369a1'}}>
+                        <span key={i} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full border border-blue-300">
                           {category}
                         </span>
                       ))}
@@ -675,51 +557,36 @@ const ManhwaDatabase = () => {
               </div>
 
               {/* Details */}
-              <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '16px' }}>
+              <div className="text-sm text-gray-600 mb-4">
                 {manhwa.authors && manhwa.authors.length > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <User size={16} color="#d97706" />
+                  <div className="flex items-center gap-2 mb-2">
+                    <BookOpen size={14} className="text-amber-600" />
                     <span>{manhwa.authors.join(', ')}</span>
                   </div>
                 )}
                 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Calendar size={16} color="#d97706" />
+                <div className="flex items-center gap-4 mb-2">
+                  <div className="flex items-center gap-1">
+                    <Calendar size={14} className="text-amber-600" />
                     <span>{manhwa.year_released}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <Hash size={16} color="#d97706" />
+                  <div className="flex items-center gap-1">
+                    <Hash size={14} className="text-amber-600" />
                     <span>{manhwa.chapters}</span>
                   </div>
                 </div>
 
-                <span style={{
-                  padding: '4px 8px',
-                  borderRadius: '20px',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  background: manhwa.status === 'Ongoing' ? '#dcfce7' : 
-                             manhwa.status === 'Complete' ? '#dbeafe' : '#f3f4f6',
-                  color: manhwa.status === 'Ongoing' ? '#166534' : 
-                         manhwa.status === 'Complete' ? '#1e40af' : '#374151'
-                }}>
+                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                  manhwa.status === 'Ongoing' ? 'bg-green-100 text-green-800' : 
+                  manhwa.status === 'Complete' ? 'bg-blue-100 text-blue-800' : 
+                  'bg-gray-100 text-gray-800'
+                }`}>
                   {manhwa.status}
                 </span>
               </div>
 
               {/* Read Button */}
-              <button style={{
-                width: '100%',
-                padding: '12px',
-                background: 'linear-gradient(to right, #d97706, #ea580c)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontWeight: '500',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}>
+              <button className="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg font-medium hover:from-amber-700 hover:to-orange-700 transition-all">
                 🔗 Link Coming Soon
               </button>
             </div>
@@ -728,43 +595,29 @@ const ManhwaDatabase = () => {
 
         {/* No Results */}
         {filteredData.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '48px 0' }}>
-            <BookOpen size={64} color="#fbbf24" style={{ margin: '0 auto 16px' }} />
-            <h3 style={{ fontSize: '20px', fontWeight: '600', color: '#92400e', marginBottom: '8px' }}>
+          <div className="text-center py-12">
+            <BookOpen size={64} className="text-amber-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-amber-800 mb-2">
               No manhwa found
             </h3>
-            <p style={{ color: '#6b7280' }}>Try adjusting your search or filters</p>
+            <p className="text-gray-600">Try adjusting your search or filters</p>
           </div>
         )}
 
         {/* Tribute Section */}
-        <div style={{
-          marginTop: '48px',
-          background: 'linear-gradient(to right, #fef3c7, #fed7aa)',
-          borderRadius: '12px',
-          border: '2px solid #fbbf24',
-          padding: '32px',
-          textAlign: 'center'
-        }}>
-          <h2 style={{ fontSize: '22px', fontWeight: 'bold', color: '#92400e', marginBottom: '16px', fontFamily: 'Georgia, serif' }}>
+        <div className="mt-12 bg-gradient-to-r from-amber-100 to-orange-100 rounded-xl border-2 border-amber-300 p-8 text-center">
+          <h2 className="text-2xl font-bold text-amber-800 mb-4 font-serif">
             ⚔️ Tribute to the Original Archive ⚔️
           </h2>
-          <p style={{ color: '#92400e', marginBottom: '16px' }}>
+          <p className="text-amber-800 mb-4">
             This database is inspired by the amazing community-driven manhwa spreadsheet
           </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div className="flex gap-4 justify-center flex-wrap">
             <a
               href="https://www.reddit.com/r/manhwa/comments/1ioddo5/final_manhwa_list_spreadsheet/"
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                padding: '12px 24px',
-                background: '#ea580c',
-                color: 'white',
-                borderRadius: '8px',
-                fontWeight: '500',
-                textDecoration: 'none'
-              }}
+              className="px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors"
             >
               📱 Reddit Thread
             </a>
@@ -772,27 +625,13 @@ const ManhwaDatabase = () => {
               href="https://docs.google.com/spreadsheets/d/1ZluFOVtJCv-cQLXWhmCLNoZFIMLV0eTrqozwyEb1zw8/edit?usp=drivesdk"
               target="_blank"
               rel="noopener noreferrer"
-              style={{
-                padding: '12px 24px',
-                background: '#059669',
-                color: 'white',
-                borderRadius: '8px',
-                fontWeight: '500',
-                textDecoration: 'none'
-              }}
+              className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
             >
               📊 Google Sheet
             </a>
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 };
