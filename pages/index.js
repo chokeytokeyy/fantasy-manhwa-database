@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Search, Upload, User, BookOpen, Star, Calendar, Hash, Filter, X } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase configuration
-const supabaseUrl = 'https://tlfakcdpciitctqbzpns.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsZmFrY2RwY2lpdGN0cWJ6cG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgyNzU2MTEsImV4cCI6MjA1Mzg1MTYxMX0.qXl46_cxeAGMH6oT0CZQ5Cx-X0iKD7Y3P43m3Ap9D-c';
+// Supabase configuration - Use environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://tlfakcdpciitctqbzpns.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsZmFrY2RwY2lpdGN0cWJ6cG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgyNzU2MTEsImV4cCI6MjA1Mzg1MTYxMX0.qXl46_cxeAGMH6oT0CZQ5Cx-X0iKD7Y3P43m3Ap9D-c';
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -107,6 +107,9 @@ const ManhwaDatabase = () => {
     try {
       console.log('Saving to database:', manhwaArray.length, 'entries');
       
+      // Ensure we're working with an array
+      const dataToInsert = Array.isArray(manhwaArray) ? manhwaArray : [manhwaArray];
+      
       // Clear existing data first
       const { error: deleteError } = await supabase
         .from('manhwa')
@@ -117,10 +120,10 @@ const ManhwaDatabase = () => {
         console.error('Error clearing existing data:', deleteError);
       }
 
-      // Insert new data
+      // Insert new data - ensure it's an array
       const { data, error } = await supabase
         .from('manhwa')
-        .insert([manhwaArray]);
+        .insert(dataToInsert);
 
       if (error) {
         console.error('Error saving to database:', error);
@@ -195,11 +198,12 @@ const ManhwaDatabase = () => {
         }
 
         if (processedData.length > 0) {
-          // Save to database
+          // Save to database - processedData is already an array
           const saved = await saveManhwaToDatabase(processedData);
           
           if (saved) {
-            setManhwaData(processedData);
+            // Reload data from database to ensure sync
+            await loadManhwaData();
             alert(`Successfully uploaded ${processedData.length} manhwa entries to the database! Data is now permanently saved.`);
           } else {
             // Fallback to local storage
@@ -258,15 +262,15 @@ const ManhwaDatabase = () => {
     const searchMatch = searchTerm === '' || 
       manhwa.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       manhwa.synopsis.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      manhwa.genres.some(g => g.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      manhwa.authors.some(a => a.toLowerCase().includes(searchTerm.toLowerCase()));
+      (manhwa.genres && manhwa.genres.some(g => g.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+      (manhwa.authors && manhwa.authors.some(a => a.toLowerCase().includes(searchTerm.toLowerCase())));
 
     // Apply filters
     const genreMatch = selectedFilters.genres.length === 0 || 
-      selectedFilters.genres.some(genre => manhwa.genres.includes(genre));
+      (manhwa.genres && selectedFilters.genres.some(genre => manhwa.genres.includes(genre)));
     
     const categoryMatch = selectedFilters.categories.length === 0 || 
-      selectedFilters.categories.some(category => manhwa.categories.includes(category));
+      (manhwa.categories && selectedFilters.categories.some(category => manhwa.categories.includes(category)));
     
     const ratingMatch = selectedFilters.rating.length === 0 || 
       selectedFilters.rating.includes(manhwa.rating);
