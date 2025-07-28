@@ -120,7 +120,7 @@ const ManhwaDatabase = () => {
       // Insert new data
       const { data, error } = await supabase
         .from('manhwa')
-        .insert(manhwaArray);
+        .insert([manhwaArray]);
 
       if (error) {
         console.error('Error saving to database:', error);
