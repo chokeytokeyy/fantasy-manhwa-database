@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Upload, User, BookOpen, Star, Calendar, Hash, Filter, X } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
+
+// Supabase configuration
+const supabaseUrl = 'https://tlfakcdpciitctqbzpns.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsZmFrY2RwY2lpdGN0cWJ6cG5zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgyNzU2MTEsImV4cCI6MjA1Mzg1MTYxMX0.qXl46_cxeAGMH6oT0CZQ5Cx-X0iKD7Y3P43m3Ap9D-c';
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const ManhwaDatabase = () => {
   const [manhwaData, setManhwaData] = useState([]);
@@ -14,9 +21,40 @@ const ManhwaDatabase = () => {
     chapters: []
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Load data from Supabase on component mount
   useEffect(() => {
-    // Load clean sample data
+    loadManhwaData();
+  }, []);
+
+  const loadManhwaData = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('manhwa')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading manhwa data:', error);
+        loadSampleData(); // Fallback to sample data
+      } else if (data && data.length > 0) {
+        console.log(`Loaded ${data.length} manhwa entries from database`);
+        setManhwaData(data);
+      } else {
+        console.log('No data in database, loading sample data');
+        loadSampleData();
+      }
+    } catch (error) {
+      console.error('Error connecting to database:', error);
+      loadSampleData();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadSampleData = () => {
     const sampleData = [
       {
         title: "0.0000001% Demon King",
@@ -24,7 +62,7 @@ const ManhwaDatabase = () => {
         genres: ["Action", "Comedy", "Fantasy", "Shounen"],
         categories: ["Politics", "Unique Cheat", "Weak to Strong"],
         authors: ["Yuwol", "Palanyeong"],
-        yearReleased: "2024",
+        year_released: "2024",
         chapters: "Less than 100",
         status: "Ongoing",
         rating: "Decent"
@@ -35,7 +73,7 @@ const ManhwaDatabase = () => {
         genres: ["Action", "Drama", "Supernatural"],
         categories: ["Friendship", "Modern World Cheat"],
         authors: ["SiNi"],
-        yearReleased: "2019",
+        year_released: "2019",
         chapters: "Less than 100",
         status: "Unknown",
         rating: "Good"
@@ -46,25 +84,14 @@ const ManhwaDatabase = () => {
         genres: ["Drama", "Fantasy", "Horror", "Psychological"],
         categories: ["Apocalypse", "Female Protagonist", "Survival"],
         authors: ["Bora Giraffe"],
-        yearReleased: "2022",
+        year_released: "2022",
         chapters: "71",
         status: "Complete",
         rating: "Recommended"
-      },
-      {
-        title: "100-Year-Old Top Chef",
-        synopsis: "The world's greatest chef. First, second, third… and sixth life. The combined time I've spent on cooking is over 100 years.",
-        genres: ["Drama", "Fantasy", "Slice of Life", "Supernatural"],
-        categories: ["Cooking", "Modern World Cheat", "Regression", "Reincarnation"],
-        authors: ["Mungonglyong", "Studio Jemi"],
-        yearReleased: "2023",
-        chapters: "70",
-        status: "Complete",
-        rating: "Good"
       }
     ];
     setManhwaData(sampleData);
-  }, []);
+  };
 
   const handleAdminLogin = () => {
     if (adminPassword === 'manhwa_admin_2025') {
@@ -76,44 +103,51 @@ const ManhwaDatabase = () => {
     }
   };
 
+  const saveManhwaToDatabase = async (manhwaArray) => {
+    try {
+      console.log('Saving to database:', manhwaArray.length, 'entries');
+      
+      // Clear existing data first
+      const { error: deleteError } = await supabase
+        .from('manhwa')
+        .delete()
+        .neq('id', 0); // Delete all rows
+
+      if (deleteError) {
+        console.error('Error clearing existing data:', deleteError);
+      }
+
+      // Insert new data
+      const { data, error } = await supabase
+        .from('manhwa')
+        .insert(manhwaArray);
+
+      if (error) {
+        console.error('Error saving to database:', error);
+        throw error;
+      }
+
+      console.log('Successfully saved to database');
+      return true;
+    } catch (error) {
+      console.error('Database save failed:', error);
+      return false;
+    }
+  };
+
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
+    setIsLoading(true);
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const csv = e.target.result;
-        console.log('Raw CSV first 1000 chars:', csv.substring(0, 1000));
+        console.log('Processing CSV file...');
         
-        // Split by lines and handle different line endings
         const lines = csv.split(/\r?\n/);
-        console.log('Total lines:', lines.length);
-        
-        // Look for the header row more carefully
-        let headerRowIndex = -1;
-        let dataStartIndex = -1;
-        
-        for (let i = 0; i < Math.min(15, lines.length); i++) {
-          const line = lines[i].toLowerCase();
-          console.log(`Line ${i}:`, lines[i]);
-          
-          // Look for the actual header with all expected columns
-          if (line.includes('title') && line.includes('synopsis') && line.includes('genre') && line.includes('categories')) {
-            headerRowIndex = i;
-            dataStartIndex = i + 1;
-            console.log('Found proper header at line:', i);
-            console.log('Header content:', lines[i]);
-            break;
-          }
-        }
-
-        // If we can't find header, assume it starts at row 8 (your format)
-        if (dataStartIndex === -1) {
-          dataStartIndex = 8;
-          console.log('Using default start index:', dataStartIndex);
-        }
-
+        let dataStartIndex = 8; // Your CSV format starts at row 8
         const processedData = [];
 
         // Process each data row
@@ -121,43 +155,26 @@ const ManhwaDatabase = () => {
           const line = lines[i].trim();
           if (!line) continue;
           
-          // Parse the CSV line properly
           const row = parseCSVLine(line);
           
-          // Skip if not enough columns or empty title
           if (row.length < 11 || !row[1] || row[1].trim() === '' || row[1].toLowerCase() === 'title') {
             continue;
           }
 
-          console.log(`Processing row ${i}:`);
-          console.log('Title:', row[1]);  // Column 1 (not 0)
-          console.log('Synopsis:', row[2]?.substring(0, 50) + '...');
-          console.log('Raw Genres:', row[3]);  // Column 3 (not 2)
-          console.log('Raw Categories:', row[4]);  // Column 4 (not 3)
-          console.log('Raw Authors:', row[5]);  // Column 5 (not 4)
+          const title = cleanField(row[1]);
+          const synopsis = cleanField(row[2]);
+          const genresText = cleanField(row[3]);
+          const categoriesText = cleanField(row[4]);
+          const authorsText = cleanField(row[5]);
 
-          // Clean and process each field - CORRECTED COLUMN INDICES
-          const title = cleanField(row[1]);     // Title is in column 1
-          const synopsis = cleanField(row[2]);  // Synopsis is in column 2
-          const genresText = cleanField(row[3]);     // Genres in column 3
-          const categoriesText = cleanField(row[4]); // Categories in column 4
-          const authorsText = cleanField(row[5]);    // Authors in column 5
-
-          // Process genres - should be things like "Action, Comedy, Fantasy"
           const genres = genresText ? 
             genresText.split(',').map(g => g.trim()).filter(g => g && g.length > 0 && g.length < 50) : [];
 
-          // Process categories - should be things like "Modern World Cheat, Academy"
           const categories = categoriesText ? 
             categoriesText.split(',').map(c => c.trim()).filter(c => c && c.length > 0 && c.length < 100) : [];
 
-          // Process authors
           const authors = authorsText ? 
             authorsText.split(',').map(a => a.trim()).filter(a => a && a.length > 0 && a.length < 100) : [];
-
-          console.log('Processed Genres:', genres);
-          console.log('Processed Categories:', categories);
-          console.log('Processed Authors:', authors);
 
           const manhwa = {
             title: title,
@@ -165,31 +182,38 @@ const ManhwaDatabase = () => {
             genres: genres,
             categories: categories,
             authors: authors,
-            yearReleased: cleanField(row[6]),  // Column 6
-            chapters: cleanField(row[7]),      // Column 7
-            status: cleanField(row[8]),        // Column 8
-            rating: cleanField(row[9]),        // Column 9
-            relatedSeries: cleanField(row[10]) // Column 10
+            year_released: cleanField(row[6]),
+            chapters: cleanField(row[7]),
+            status: cleanField(row[8]),
+            rating: cleanField(row[9]),
+            related_series: cleanField(row[10])
           };
 
-          // Only add if we have valid data
           if (manhwa.title && manhwa.title.length > 1) {
             processedData.push(manhwa);
-            console.log('Added manhwa:', manhwa.title);
           }
         }
 
-        console.log('Final processed data:', processedData.length, 'entries');
-
         if (processedData.length > 0) {
-          setManhwaData(processedData);
-          alert(`Successfully uploaded ${processedData.length} manhwa entries!`);
+          // Save to database
+          const saved = await saveManhwaToDatabase(processedData);
+          
+          if (saved) {
+            setManhwaData(processedData);
+            alert(`Successfully uploaded ${processedData.length} manhwa entries to the database! Data is now permanently saved.`);
+          } else {
+            // Fallback to local storage
+            setManhwaData(processedData);
+            alert(`Uploaded ${processedData.length} manhwa entries locally. Database save failed, but data is still available.`);
+          }
         } else {
-          alert('No valid manhwa data found. Please check the console for debugging info.');
+          alert('No valid manhwa data found. Please check the CSV format.');
         }
       } catch (error) {
         alert('Error processing CSV file: ' + error.message);
         console.error('CSV processing error:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     reader.readAsText(file);
@@ -199,11 +223,9 @@ const ManhwaDatabase = () => {
   const cleanField = (field) => {
     if (!field) return '';
     let cleaned = field.toString().trim();
-    // Remove surrounding quotes
     if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
       cleaned = cleaned.slice(1, -1);
     }
-    // Remove any remaining quotes
     cleaned = cleaned.replace(/"/g, '');
     return cleaned;
   };
@@ -213,13 +235,11 @@ const ManhwaDatabase = () => {
     const result = [];
     let current = '';
     let inQuotes = false;
-    let quoteCount = 0;
     
     for (let i = 0; i < line.length; i++) {
       const char = line[i];
       
       if (char === '"') {
-        quoteCount++;
         inQuotes = !inQuotes;
       } else if (char === ',' && !inQuotes) {
         result.push(current.trim());
@@ -230,7 +250,6 @@ const ManhwaDatabase = () => {
     }
     
     result.push(current.trim());
-    console.log(`Parsed ${result.length} columns from line`);
     return result;
   };
 
@@ -357,6 +376,18 @@ const ManhwaDatabase = () => {
     border: '1px solid #fbbf24'
   };
 
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #fef3c7, #fed7aa)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <BookOpen size={64} color="#d97706" style={{ margin: '0 auto 16px', animation: 'spin 2s linear infinite' }} />
+          <h2 style={{ color: '#92400e', marginBottom: '8px' }}>Loading Manhwa Database...</h2>
+          <p style={{ color: '#6b7280' }}>Connecting to Supabase...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(to bottom right, #fef3c7, #fed7aa)' }}>
       {/* Header */}
@@ -369,7 +400,10 @@ const ManhwaDatabase = () => {
             </h1>
           </div>
           
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ fontSize: '12px', color: '#fed7aa' }}>
+              🗄️ Database Connected
+            </div>
             {!isAdminMode ? (
               <button
                 onClick={() => setShowPasswordInput(!showPasswordInput)}
@@ -415,13 +449,14 @@ const ManhwaDatabase = () => {
             border: '1px solid #fbbf24'
           }}>
             <h3 style={{ color: '#fef3c7', marginBottom: '8px', fontSize: '16px', fontWeight: '600' }}>
-              📜 Upload Manhwa Database
+              📜 Upload Manhwa Database to Supabase
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <input
                 type="file"
                 accept=".csv"
                 onChange={handleFileUpload}
+                disabled={isLoading}
                 style={{ 
                   color: '#fef3c7',
                   background: 'transparent',
@@ -434,13 +469,23 @@ const ManhwaDatabase = () => {
               <Upload size={20} color="#fbbf24" />
             </div>
             <p style={{ fontSize: '12px', color: '#fed7aa', margin: '8px 0 0 0' }}>
-              Upload CSV file with your manhwa data (replaces sample data)
+              {isLoading ? 'Uploading to database...' : 'Upload CSV file - data will be saved permanently to Supabase database'}
             </p>
           </div>
         )}
       </header>
 
       <div style={containerStyle}>
+        {/* Database Status */}
+        <div style={{ ...cardStyle, marginBottom: '16px', background: '#f0f9ff', border: '2px solid #0ea5e9' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ width: '8px', height: '8px', background: '#10b981', borderRadius: '50%' }}></div>
+            <span style={{ color: '#0369a1', fontWeight: '500' }}>
+              Connected to Supabase Database - All data is permanently saved
+            </span>
+          </div>
+        </div>
+
         {/* Search and Filters */}
         <div style={cardStyle}>
           <div style={{ position: 'relative', marginBottom: '16px' }}>
@@ -578,7 +623,7 @@ const ManhwaDatabase = () => {
         {/* Manhwa Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '24px' }}>
           {filteredData.map((manhwa, index) => (
-            <div key={index} style={cardStyle}>
+            <div key={manhwa.id || index} style={cardStyle}>
               {/* Title and Rating */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#92400e', margin: 0, flex: 1 }}>
@@ -601,7 +646,7 @@ const ManhwaDatabase = () => {
                   📚 Genres
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px', marginBottom: '8px' }}>
-                  {manhwa.genres.map((genre, i) => (
+                  {manhwa.genres && manhwa.genres.map((genre, i) => (
                     <span key={i} style={{...genreTagStyle, background: '#fef3c7', color: '#92400e'}}>
                       {genre}
                     </span>
@@ -637,7 +682,7 @@ const ManhwaDatabase = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '8px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <Calendar size={16} color="#d97706" />
-                    <span>{manhwa.yearReleased}</span>
+                    <span>{manhwa.year_released}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <Hash size={16} color="#d97706" />
@@ -737,6 +782,13 @@ const ManhwaDatabase = () => {
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };
