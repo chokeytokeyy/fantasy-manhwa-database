@@ -14,6 +14,7 @@ const ManhwaDatabase = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
+  const [expandedDescriptions, setExpandedDescriptions] = useState(new Set());
 
   // Load sample data on component mount
   useEffect(() => {
@@ -255,6 +256,32 @@ const ManhwaDatabase = () => {
     }
   };
 
+  const toggleDescription = (index) => {
+    const newExpanded = new Set(expandedDescriptions);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedDescriptions(newExpanded);
+  };
+
+  const truncateText = (text, maxLines = 4) => {
+    if (!text) return '';
+    const words = text.split(' ');
+    const wordsPerLine = 12; // Approximate words per line
+    const maxWords = maxLines * wordsPerLine;
+    
+    if (words.length <= maxWords) {
+      return { text, needsTruncation: false };
+    }
+    
+    return {
+      text: words.slice(0, maxWords).join(' '),
+      needsTruncation: true
+    };
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-100 to-orange-200 flex items-center justify-center">
@@ -470,21 +497,4 @@ const ManhwaDatabase = () => {
                   {getUniqueValues('rating').map(rating => (
                     <button
                       key={rating}
-                      onClick={() => toggleFilter('rating', rating)}
-                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                        selectedFilters.rating.includes(rating)
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
-                      }`}
-                    >
-                      {rating}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Chapters */}
-              <div>
-                <h4 className="font-semibold text-amber-800 mb-2 text-sm">📖 Chapters</h4>
-                <div className="flex flex-wrap gap-1">
-                  {getUniqueValues('chapter
+                      onClick={() => toggleFilter('r
