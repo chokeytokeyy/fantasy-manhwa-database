@@ -1114,13 +1114,80 @@ const ManhwaDatabase = () => {
               </button>
               
               <button
-                onClick={() => {
-                  console.log('=== FORCE RELOAD FROM DATABASE ===');
-                  loadDataFromDatabase();
+                onClick={async () => {
+                  console.log('=== COMPREHENSIVE DATABASE INSPECTION ===');
+                  try {
+                    const baseUrl = supabaseConfig.url;
+                    const apiKey = supabaseConfig.anonKey;
+                    
+                    // Test 1: Check table structure
+                    console.log('1. Checking table info...');
+                    const tableInfoResponse = await fetch(`${baseUrl}/rest/v1/`, {
+                      headers: {
+                        'apikey': apiKey,
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                      }
+                    });
+                    console.log('Table info status:', tableInfoResponse.status);
+                    
+                    // Test 2: Try different query approaches
+                    console.log('2. Testing different queries...');
+                    
+                    // Simple count
+                    const countResponse = await fetch(`${baseUrl}/rest/v1/manhwa?select=count()`, {
+                      headers: {
+                        'apikey': apiKey,
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                      }
+                    });
+                    console.log('Count query status:', countResponse.status);
+                    const countData = await countResponse.json();
+                    console.log('Count result:', countData);
+                    
+                    // Limited select
+                    const limitedResponse = await fetch(`${baseUrl}/rest/v1/manhwa?select=*&limit=5`, {
+                      headers: {
+                        'apikey': apiKey,
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                      }
+                    });
+                    console.log('Limited query status:', limitedResponse.status);
+                    const limitedData = await limitedResponse.json();
+                    console.log('Limited result:', limitedData);
+                    
+                    // Test 3: Check if table exists with different name
+                    console.log('3. Checking for alternative table names...');
+                    const alternativeNames = ['manhwas', 'manhwa_data', 'manhwa_entries'];
+                    
+                    for (const tableName of alternativeNames) {
+                      try {
+                        const altResponse = await fetch(`${baseUrl}/rest/v1/${tableName}?select=count()&limit=1`, {
+                          headers: {
+                            'apikey': apiKey,
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json'
+                          }
+                        });
+                        console.log(`Table "${tableName}" status:`, altResponse.status);
+                        if (altResponse.ok) {
+                          const altData = await altResponse.json();
+                          console.log(`Table "${tableName}" data:`, altData);
+                        }
+                      } catch (error) {
+                        console.log(`Table "${tableName}" error:`, error.message);
+                      }
+                    }
+                    
+                  } catch (error) {
+                    console.error('Comprehensive test error:', error);
+                  }
                 }}
-                className="px-3 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors text-sm"
+                className="px-3 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-500 transition-colors text-sm"
               >
-                🔄 Force Reload
+                🔍 Deep Inspect
               </button>
             </div>
           </div>
