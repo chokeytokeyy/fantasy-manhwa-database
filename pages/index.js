@@ -32,6 +32,7 @@ const ManhwaDatabase = () => {
   });
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
 
   // Load sample data on component mount and auto-connect to database
   useEffect(() => {
@@ -890,6 +891,80 @@ const ManhwaDatabase = () => {
         </div>
       )}
 
+      {/* Credits & Tribute Modal */}
+      {showCreditsModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl p-6 max-w-2xl w-full shadow-2xl border border-slate-600 max-h-[80vh] overflow-y-auto">
+            <div className="text-center mb-6">
+              <div className="flex items-center justify-center gap-3 mb-4">
+                <BookOpen size={48} className="text-blue-400" />
+                <Star size={32} className="text-yellow-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">Credits & Tribute</h2>
+              <p className="text-gray-400">Honoring the community that made this possible</p>
+            </div>
+            
+            <div className="text-gray-300 space-y-4 mb-6 text-sm leading-relaxed">
+              <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
+                <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+                  🏆 Original Creator Recognition
+                </h3>
+                <p>This database exists thanks to the incredible work of a dedicated community member who created and maintained a comprehensive manhwa spreadsheet. Their meticulous cataloging of hundreds of titles, complete with ratings, synopses, and detailed categorizations, provided the foundation for this web platform.</p>
+              </div>
+
+              <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
+                <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+                  🌟 Community Contribution
+                </h3>
+                <p>The original spreadsheet was shared on Reddit's manhwa community, where passionate readers contributed reviews, recommendations, and updates. This collaborative effort represents countless hours of reading, evaluating, and organizing content for the benefit of fellow enthusiasts.</p>
+              </div>
+
+              <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
+                <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+                  💻 Web Platform Development
+                </h3>
+                <p>I transformed the original spreadsheet into this interactive web database to make the wealth of information more accessible and user-friendly. The goal was to preserve all the valuable community insights while adding modern search, filtering, and browsing capabilities.</p>
+              </div>
+
+              <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
+                <h3 className="text-white font-semibold mb-2 flex items-center gap-2">
+                  🙏 Acknowledgment
+                </h3>
+                <p>This project stands as a tribute to the manhwa community's dedication to sharing knowledge and helping others discover amazing stories. Every rating, review, and recommendation in this database represents a reader's genuine experience and desire to guide others toward great content.</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex gap-3 justify-center flex-wrap">
+                <a
+                  href="https://www.reddit.com/r/manhwa/comments/1ioddo5/final_manhwa_list_spreadsheet/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-500 transition-colors text-sm"
+                >
+                  📱 View Reddit Post
+                </a>
+                <a
+                  href="https://docs.google.com/spreadsheets/d/1ZluFOVtJCv-cQLXWhmCLNoZFIMLV0eTrqozwyEb1zw8/edit?usp=drivesdk"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors text-sm"
+                >
+                  📊 Original Spreadsheet
+                </a>
+              </div>
+              
+              <button
+                onClick={() => setShowCreditsModal(false)}
+                className="w-full px-6 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Admin Login Modal */}
       {showAdminLogin && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -1388,20 +1463,17 @@ const ManhwaDatabase = () => {
           </div>
         )}
 
-        {/* Upload Section */}
-        {showUploadSection && manhwaData.length <= 3 && (
+        {/* Upload Section - Only show if database is empty */}
+        {showUploadSection && manhwaData.length <= 3 && !dbConnected && (
           <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-slate-600">
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                   <Upload size={20} className="text-blue-400" />
-                  Upload Manhwa Database
+                  No Database Connection
                 </h3>
                 <p className="text-sm text-gray-300">
-                  {dbConnected ? 
-                    "Database is connected but appears empty. Upload your CSV file to populate it." :
-                    "First download the database file, then upload it here to load the manhwa collection."
-                  }
+                  Cannot connect to database. You can still browse with local CSV upload.
                 </p>
               </div>
               
@@ -1452,21 +1524,21 @@ const ManhwaDatabase = () => {
                 Choose File
               </label>
               <p className="text-sm text-gray-400 mt-3">
-                CSV files only • {dbConnected ? 'Data will be saved to database' : 'Data stored locally in your browser'}
+                CSV files only • Local browsing only (no database)
               </p>
             </div>
           </div>
         )}
 
-        {/* Collapsed Upload Button */}
-        {!showUploadSection && manhwaData.length <= 3 && (
+        {/* Collapsed Upload Button - Only show if database is disconnected */}
+        {!showUploadSection && manhwaData.length <= 3 && !dbConnected && (
           <div className="mb-6">
             <button
               onClick={() => setShowUploadSection(true)}
               className="px-4 py-2 bg-purple-600/80 backdrop-blur-sm text-white rounded-lg font-medium hover:bg-purple-500 transition-colors text-sm border border-purple-500"
             >
               <Upload size={16} className="inline mr-2" />
-              Show Upload Section
+              Show Local Upload (Database Offline)
             </button>
           </div>
         )}
@@ -1746,13 +1818,13 @@ const ManhwaDatabase = () => {
           </div>
         )}
 
-        {/* Credits Section */}
+        {/* Credits Section - Updated */}
         <div className="mt-12 bg-slate-800/90 backdrop-blur-sm rounded-xl border border-slate-600 p-6 md:p-8 text-center">
           <h2 className="text-2xl font-bold text-white mb-4">Credits & Data Source</h2>
           <p className="text-gray-300 mb-4">
-            This database is based on the community-driven manhwa spreadsheet
+            This database is built upon the incredible work of the manhwa community
           </p>
-          <div className="flex gap-4 justify-center flex-wrap">
+          <div className="flex gap-4 justify-center flex-wrap mb-4">
             <a
               href="https://www.reddit.com/r/manhwa/comments/1ioddo5/final_manhwa_list_spreadsheet/"
               target="_blank"
@@ -1769,6 +1841,12 @@ const ManhwaDatabase = () => {
             >
               📊 Original Spreadsheet
             </a>
+            <button
+              onClick={() => setShowCreditsModal(true)}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors"
+            >
+              📜 Full Tribute
+            </button>
           </div>
         </div>
       </div>
