@@ -46,7 +46,7 @@ const ManhwaDatabase = () => {
         try {
           // Test database connection
           console.log('Testing database connection...');
-          const testResponse = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=count`, {
+          const testResponse = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=*&limit=1`, {
             headers: {
               'apikey': supabaseConfig.anonKey,
               'Authorization': `Bearer ${supabaseConfig.anonKey}`,
