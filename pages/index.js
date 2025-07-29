@@ -1055,20 +1055,57 @@ const ManhwaDatabase = () => {
               
               <button
                 onClick={async () => {
-                  console.log('=== TESTING DATABASE CONNECTION ===');
+                  console.log('=== MANUAL DATABASE TEST ===');
                   try {
-                    const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=count`, {
+                    // Test 1: Connection test
+                    console.log('1. Testing connection...');
+                    const testResponse = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=count`, {
                       headers: {
                         'apikey': supabaseConfig.anonKey,
                         'Authorization': `Bearer ${supabaseConfig.anonKey}`,
                         'Content-Type': 'application/json'
                       }
                     });
-                    console.log('Test Response Status:', response.status);
-                    const data = await response.json();
-                    console.log('Test Response Data:', data);
+                    console.log('Connection test status:', testResponse.status);
+                    const testData = await testResponse.json();
+                    console.log('Connection test data:', testData);
+
+                    // Test 2: Actual data fetch
+                    console.log('2. Testing data fetch...');
+                    const dataResponse = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=*`, {
+                      headers: {
+                        'apikey': supabaseConfig.anonKey,
+                        'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+                        'Content-Type': 'application/json'
+                      }
+                    });
+                    console.log('Data fetch status:', dataResponse.status);
+                    const data = await dataResponse.json();
+                    console.log('Data fetch result:', `${data.length} records`);
+                    if (data.length > 0) {
+                      console.log('First 3 records:', data.slice(0, 3));
+                    }
+
+                    // Test 3: Try to set the data manually
+                    if (data.length > 0) {
+                      console.log('3. Manually setting data...');
+                      const formattedData = data.map(item => ({
+                        title: item.title || '',
+                        synopsis: item.synopsis || '',
+                        genres: Array.isArray(item.genres) ? item.genres : [],
+                        categories: Array.isArray(item.categories) ? item.categories : [],
+                        authors: Array.isArray(item.authors) ? item.authors : [],
+                        year_released: item.year_released || '',
+                        chapters: item.chapters || '',
+                        status: item.status || '',
+                        rating: item.rating || '',
+                        thumbnail: item.thumbnail || ''
+                      }));
+                      setManhwaData(formattedData);
+                      console.log('✅ Data manually set!', formattedData.length, 'records');
+                    }
                   } catch (error) {
-                    console.error('Test Connection Error:', error);
+                    console.error('Manual test error:', error);
                   }
                 }}
                 className="px-3 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors text-sm"
