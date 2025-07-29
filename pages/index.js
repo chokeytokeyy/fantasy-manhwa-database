@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Upload, BookOpen, Star, Calendar, Hash, Filter, X, FileText, Settings, Eye, EyeOff, Database, Wifi, WifiOff, Save, Download, Lock, Unlock, User, Shield } from 'lucide-react';
+import { Search, Upload, BookOpen, Star, Calendar, Hash, Filter, X, FileText, Database, Wifi, WifiOff, Save, Download, Lock, Unlock, User, Shield } from 'lucide-react';
 
 const ManhwaDatabase = () => {
   const [manhwaData, setManhwaData] = useState([]);
@@ -79,7 +79,7 @@ const ManhwaDatabase = () => {
     const sampleData = [
       {
         title: "0.0000001% Demon King",
-        synopsis: "The 72 Demon Kings, who received the order to destroy the earth, each went through a trial by the Great Demon King Astrea. Those who passed the trial earned the title of Demon King, and each Demon King was granted special powers by the Great Demon King. So far, each Demon King had been granted extraordinary abilities. When Karos became a Demon King, he received a power from the Great Demon King, but… 'Great Demon King, no matter how much I think about it, there is a problem with my power.' 'Problem?' Among the Demon Kings with extraordinary abilities… Karos received the [Gacha] ability. 'Gacha as the power of a Demon King? How am I supposed to rule the world with Gacha?!'",
+        synopsis: "The 72 Demon Kings, who received the order to destroy the earth, each went through a trial by the Great Demon King Astrea. Those who passed the trial earned the title of Demon King, and each Demon King was granted special powers by the Great Demon King.",
         genres: ["Action", "Comedy", "Fantasy", "Shounen"],
         categories: ["Politics", "Unique Cheat", "Weak to Strong"],
         authors: ["Yuwol", "Palanyeong"],
@@ -91,7 +91,7 @@ const ManhwaDatabase = () => {
       },
       {
         title: "1 Second",
-        synopsis: "Every second counts when you're a first responder. But what if you could see a glimpse into the future? Hosu is a firefighter with the supernatural ability to do just that. There's just one catch. It only works when he feels extreme stress under pressure. Will knowing what will happen ahead of time help Hosu extinguish fires before they completely destroy homes and lives? And will he learn to wield his ability when he needs it most?",
+        synopsis: "Every second counts when you're a first responder. But what if you could see a glimpse into the future? Hosu is a firefighter with the supernatural ability to do just that.",
         genres: ["Action", "Drama", "Supernatural"],
         categories: ["Friendship", "Modern World Cheat"],
         authors: ["SiNi"],
@@ -103,7 +103,7 @@ const ManhwaDatabase = () => {
       },
       {
         title: "1331",
-        synopsis: "Yoo Min, a full time department store worker, begins to feel skeptical about her own life. She decides to quit her job due to a conflict with her manager. However, when she enters the manager's office, she comes face to face with the manager who has now turned into a monster. Yoo Min immediately runs away from the manager, but encounters another monster and faces danger once again. Outside the department store, a world experiencing doom had already begun unfolding.",
+        synopsis: "Yoo Min, a full time department store worker, begins to feel skeptical about her own life. She decides to quit her job due to a conflict with her manager.",
         genres: ["Drama", "Fantasy", "Horror", "Psychological"],
         categories: ["Apocalypse", "Female Protagonist", "Survival"],
         authors: ["Bora Giraffe"],
@@ -117,34 +117,254 @@ const ManhwaDatabase = () => {
     setManhwaData(sampleData);
   };
 
+  // Helper function to remove duplicates
+  const removeDuplicates = (array, key) => {
+    const seen = new Set();
+    return array.filter(item => {
+      const value = item[key]?.toLowerCase()?.trim();
+      if (seen.has(value)) {
+        return false;
+      }
+      seen.add(value);
+      return true;
+    });
+  };
+
+  // Helper function to clean CSV fields
+  const cleanField = (field) => {
+    if (!field) return '';
+    let cleaned = field.toString().trim();
+    if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+      cleaned = cleaned.slice(1, -1);
+    }
+    cleaned = cleaned.replace(/"/g, '');
+    return cleaned;
+  };
+
+  // Enhanced CSV parser
+  const parseCSVLine = (line) => {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    
+    result.push(current.trim());
+    return result;
+  };
+
   const handleFileUpload = (file) => {
     if (!file) return;
     
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      alert(`Successfully loaded ${file.name}!`);
-    }, 2000);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csv = e.target.result;
+        const lines = csv.split(/\r?\n/);
+        let dataStartIndex = 8;
+        const processedData = [];
+
+        // Process each data row
+        for (let i = dataStartIndex; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const row = parseCSVLine(line);
+          
+          if (row.length < 11 || !row[1] || row[1].trim() === '' || row[1].toLowerCase() === 'title') {
+            continue;
+          }
+
+          const title = cleanField(row[1]);
+          const synopsis = cleanField(row[2]);
+          const genresText = cleanField(row[3]);
+          const categoriesText = cleanField(row[4]);
+          const authorsText = cleanField(row[5]);
+
+          const genres = genresText ? 
+            genresText.split(',').map(g => g.trim()).filter(g => g && g.length > 0 && g.length < 50) : [];
+
+          const categories = categoriesText ? 
+            categoriesText.split(',').map(c => c.trim()).filter(c => c && c.length > 0 && c.length < 100) : [];
+
+          const authors = authorsText ? 
+            authorsText.split(',').map(a => a.trim()).filter(a => a && a.length > 0 && a.length < 100) : [];
+
+          const manhwa = {
+            title: title,
+            synopsis: synopsis,
+            genres: genres,
+            categories: categories,
+            authors: authors,
+            year_released: cleanField(row[6]),
+            chapters: cleanField(row[7]),
+            status: cleanField(row[8]),
+            rating: cleanField(row[9]),
+            related_series: cleanField(row[10]),
+            thumbnail: thumbnailData.get(title) || ""
+          };
+
+          if (manhwa.title && manhwa.title.length > 1) {
+            processedData.push(manhwa);
+          }
+        }
+
+        if (processedData.length > 0) {
+          const uniqueData = removeDuplicates(processedData, 'title');
+          setManhwaData(uniqueData);
+          alert(`Successfully loaded ${uniqueData.length} manhwa entries${processedData.length !== uniqueData.length ? ` (${processedData.length - uniqueData.length} duplicates removed)` : ''}!`);
+        } else {
+          alert('No valid manhwa data found. Please check the CSV format.');
+        }
+      } catch (error) {
+        alert('Error processing CSV file: ' + error.message);
+        console.error('CSV processing error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleThumbnailUpload = (file) => {
     if (!file) return;
 
     setIsThumbnailLoading(true);
-    setTimeout(() => {
-      setIsThumbnailLoading(false);
-      alert(`Successfully loaded thumbnail mappings from ${file.name}!`);
-    }, 1500);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csv = e.target.result;
+        const lines = csv.split(/\r?\n/);
+        const newThumbnailData = new Map();
+        let matchedCount = 0;
+
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const row = parseCSVLine(line);
+          
+          if (row.length >= 2 && row[0] && row[1]) {
+            const title = cleanField(row[0]);
+            const thumbnailUrl = cleanField(row[1]);
+            
+            if (title && title.toLowerCase() !== 'title' && thumbnailUrl) {
+              newThumbnailData.set(title, thumbnailUrl);
+              matchedCount++;
+            }
+          }
+        }
+
+        setThumbnailData(newThumbnailData);
+        
+        if (manhwaData.length > 0) {
+          const updatedData = manhwaData.map(manhwa => ({
+            ...manhwa,
+            thumbnail: newThumbnailData.get(manhwa.title) || manhwa.thumbnail || ""
+          }));
+          setManhwaData(updatedData);
+        }
+
+        alert(`Successfully loaded ${matchedCount} thumbnail mappings!`);
+      } catch (error) {
+        alert('Error processing thumbnail CSV file: ' + error.message);
+        console.error('Thumbnail CSV processing error:', error);
+      } finally {
+        setIsThumbnailLoading(false);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const handleAdminFileUpload = (file) => {
     if (!file) return;
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      alert(`Successfully uploaded ${file.name} to database!`);
-    }, 3000);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const csv = e.target.result;
+        const lines = csv.split(/\r?\n/);
+        let dataStartIndex = 8;
+        const processedData = [];
+
+        for (let i = dataStartIndex; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const row = parseCSVLine(line);
+          
+          if (row.length < 11 || !row[1] || row[1].trim() === '' || row[1].toLowerCase() === 'title') {
+            continue;
+          }
+
+          const title = cleanField(row[1]);
+          const synopsis = cleanField(row[2]);
+          const genresText = cleanField(row[3]);
+          const categoriesText = cleanField(row[4]);
+          const authorsText = cleanField(row[5]);
+
+          const genres = genresText ? 
+            genresText.split(',').map(g => g.trim()).filter(g => g && g.length > 0 && g.length < 50) : [];
+
+          const categories = categoriesText ? 
+            categoriesText.split(',').map(c => c.trim()).filter(c => c && c.length > 0 && c.length < 100) : [];
+
+          const authors = authorsText ? 
+            authorsText.split(',').map(a => a.trim()).filter(a => a && a.length > 0 && a.length < 100) : [];
+
+          const manhwa = {
+            title: title,
+            synopsis: synopsis,
+            genres: genres,
+            categories: categories,
+            authors: authors,
+            year_released: cleanField(row[6]),
+            chapters: cleanField(row[7]),
+            status: cleanField(row[8]),
+            rating: cleanField(row[9]),
+            related_series: cleanField(row[10]),
+            thumbnail: thumbnailData.get(title) || ""
+          };
+
+          if (manhwa.title && manhwa.title.length > 1) {
+            processedData.push(manhwa);
+          }
+        }
+
+        if (processedData.length > 0) {
+          const uniqueData = removeDuplicates(processedData, 'title');
+          setManhwaData(uniqueData);
+          
+          if (dbConnected) {
+            await saveToDatabase(uniqueData);
+            alert(`Successfully processed and uploaded ${uniqueData.length} manhwa entries to database!`);
+          } else {
+            alert(`Successfully processed ${uniqueData.length} manhwa entries locally! Connect to database to save online.`);
+          }
+        } else {
+          alert('No valid manhwa data found. Please check the CSV format.');
+        }
+      } catch (error) {
+        alert('Error processing CSV file: ' + error.message);
+        console.error('CSV processing error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    reader.readAsText(file);
   };
 
   const connectToDatabase = async () => {
@@ -154,34 +374,117 @@ const ManhwaDatabase = () => {
     }
 
     setDbLoading(true);
-    setTimeout(() => {
-      setDbConnected(true);
+    try {
+      const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=count`, {
+        headers: {
+          'apikey': supabaseConfig.anonKey,
+          'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        setDbConnected(true);
+        localStorage.setItem('supabase-config', JSON.stringify(supabaseConfig));
+        await loadDataFromDatabase();
+        alert('Successfully connected to database!');
+      } else {
+        throw new Error(`Connection failed: ${response.status}`);
+      }
+    } catch (error) {
+      alert(`Database connection failed: ${error.message}`);
+      console.error('Database connection error:', error);
+    } finally {
       setDbLoading(false);
-      alert('Successfully connected to database!');
-    }, 1500);
+    }
   };
 
-  const saveToDatabase = async () => {
-    if (!dbConnected) {
+  const loadDataFromDatabase = async () => {
+    if (!dbConnected || !supabaseConfig.url || !supabaseConfig.anonKey) return;
+
+    try {
+      const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=*`, {
+        headers: {
+          'apikey': supabaseConfig.anonKey,
+          'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const formattedData = data.map(item => ({
+          title: item.title || '',
+          synopsis: item.synopsis || '',
+          genres: item.genres || [],
+          categories: item.categories || [],
+          authors: item.authors || [],
+          year_released: item.year_released || '',
+          chapters: item.chapters || '',
+          status: item.status || '',
+          rating: item.rating || '',
+          thumbnail: item.thumbnail || ''
+        }));
+        
+        const uniqueData = removeDuplicates(formattedData, 'title');
+        setManhwaData(uniqueData);
+      }
+    } catch (error) {
+      console.error('Error loading data from database:', error);
+    }
+  };
+
+  const saveToDatabase = async (dataToSave = null) => {
+    if (!dbConnected || !supabaseConfig.url || !supabaseConfig.anonKey) {
       alert('Please connect to database first');
       return;
     }
 
-    setDbLoading(true);
-    setTimeout(() => {
-      setDbLoading(false);
-      alert(`Successfully saved ${manhwaData.length} manhwa entries to database!`);
-    }, 2000);
-  };
+    const dataForSave = dataToSave || manhwaData;
+    if (dataForSave.length === 0) {
+      alert('No data to save');
+      return;
+    }
 
-  const loadDataFromDatabase = async () => {
-    if (!dbConnected) return;
-    
     setDbLoading(true);
-    setTimeout(() => {
+    try {
+      if (adminMode) {
+        await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseConfig.anonKey,
+            'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      const batchSize = 100;
+      for (let i = 0; i < dataForSave.length; i += batchSize) {
+        const batch = dataForSave.slice(i, i + batchSize);
+        
+        const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseConfig.anonKey,
+            'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(batch)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to save batch ${Math.floor(i/batchSize) + 1}`);
+        }
+      }
+
+      alert(`Successfully saved ${dataForSave.length} manhwa entries to database!`);
+    } catch (error) {
+      alert(`Error saving to database: ${error.message}`);
+      console.error('Database save error:', error);
+    } finally {
       setDbLoading(false);
-      alert('Data loaded from database successfully!');
-    }, 1000);
+    }
   };
 
   const disconnectDatabase = () => {
@@ -418,7 +721,6 @@ const ManhwaDatabase = () => {
             </div>
             
             <div className="flex items-center gap-4">
-              {/* Admin Mode Indicator */}
               {adminMode && (
                 <div className="flex items-center gap-2 px-3 py-2 bg-yellow-600/20 border border-yellow-500 rounded-lg">
                   <Shield size={16} className="text-yellow-400" />
@@ -426,7 +728,6 @@ const ManhwaDatabase = () => {
                 </div>
               )}
 
-              {/* Database Status - Admin Feature */}
               {adminMode && (
                 <div className="flex items-center gap-2">
                   {dbConnected ? (
@@ -443,7 +744,6 @@ const ManhwaDatabase = () => {
                 </div>
               )}
 
-              {/* Admin Login/Logout */}
               <button
                 onClick={() => adminMode ? adminLogout() : setShowAdminLogin(true)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors text-sm ${
@@ -474,7 +774,7 @@ const ManhwaDatabase = () => {
       </header>
 
       <div className="max-w-6xl mx-auto p-4 md:p-6">
-        {/* Admin File Upload Section - Admin Feature */}
+        {/* Admin File Upload Section */}
         {adminMode && (
           <div className="bg-gradient-to-br from-yellow-800/90 to-orange-900/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border-2 border-yellow-500">
             <div className="flex justify-between items-start mb-4">
@@ -514,7 +814,7 @@ const ManhwaDatabase = () => {
           </div>
         )}
 
-        {/* Database Configuration - Admin Feature */}
+        {/* Database Configuration */}
         {adminMode && (
           <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-blue-600">
             <div className="flex justify-between items-start mb-4">
@@ -616,7 +916,7 @@ const ManhwaDatabase = () => {
           </div>
         )}
 
-        {/* Thumbnail Upload Section - Admin Feature */}
+        {/* Thumbnail Upload Section */}
         {adminMode && (
           <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-green-600">
             <div className="flex justify-between items-start mb-4">
@@ -671,6 +971,7 @@ const ManhwaDatabase = () => {
           </div>
         )}
 
+        {/* Upload Section */}
         {showUploadSection && (
           <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-slate-600">
             <div className="flex justify-between items-start mb-4">
@@ -763,7 +1064,6 @@ const ManhwaDatabase = () => {
             />
           </div>
 
-          {/* Filter Toggle */}
           <div className="flex justify-between items-center mb-4">
             <button
               onClick={() => setShowFilters(!showFilters)}
@@ -784,10 +1084,8 @@ const ManhwaDatabase = () => {
             )}
           </div>
 
-          {/* Filters */}
           {showFilters && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-slate-600">
-              {/* Genres */}
               <div>
                 <h4 className="font-semibold text-white mb-2 text-sm">Genres</h4>
                 <div className="flex flex-wrap gap-1">
@@ -807,7 +1105,6 @@ const ManhwaDatabase = () => {
                 </div>
               </div>
 
-              {/* Categories */}
               <div>
                 <h4 className="font-semibold text-white mb-2 text-sm">Categories</h4>
                 <div className="flex flex-wrap gap-1">
@@ -827,7 +1124,6 @@ const ManhwaDatabase = () => {
                 </div>
               </div>
 
-              {/* Rating */}
               <div>
                 <h4 className="font-semibold text-white mb-2 text-sm">Rating</h4>
                 <div className="flex flex-wrap gap-1">
@@ -847,7 +1143,6 @@ const ManhwaDatabase = () => {
                 </div>
               </div>
 
-              {/* Chapters */}
               <div>
                 <h4 className="font-semibold text-white mb-2 text-sm">Chapters</h4>
                 <div className="flex flex-wrap gap-1">
@@ -879,7 +1174,6 @@ const ManhwaDatabase = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredData.map((manhwa, index) => (
             <div key={index} className="bg-slate-800/90 backdrop-blur-sm rounded-xl shadow-lg border border-slate-600 overflow-hidden hover:border-slate-500 transition-all duration-300">
-              {/* Thumbnail - Only in Admin Mode */}
               {adminMode && (
                 <div className="relative h-48 bg-slate-700 overflow-hidden">
                   {manhwa.thumbnail && manhwa.thumbnail.trim() !== "" ? (
@@ -894,7 +1188,6 @@ const ManhwaDatabase = () => {
                     />
                   ) : null}
                   
-                  {/* Fallback placeholder when no thumbnail */}
                   <div 
                     className={`w-full h-full flex items-center justify-center ${manhwa.thumbnail && manhwa.thumbnail.trim() !== "" ? 'hidden' : 'flex'}`}
                     style={{display: manhwa.thumbnail && manhwa.thumbnail.trim() !== "" ? 'none' : 'flex'}}
@@ -905,7 +1198,6 @@ const ManhwaDatabase = () => {
                     </div>
                   </div>
                   
-                  {/* Rating Badge - Always show in admin mode */}
                   <div 
                     className="absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 shadow-lg backdrop-blur-sm"
                     style={{ 
@@ -919,9 +1211,7 @@ const ManhwaDatabase = () => {
                 </div>
               )}
 
-              {/* Content */}
               <div className="p-4 md:p-6">
-                {/* Title and Rating (when not in admin mode OR no thumbnail) */}
                 <div className="flex justify-between items-start mb-3">
                   <h3 className="text-lg font-bold text-white flex-1 pr-2">
                     {manhwa.title}
@@ -940,7 +1230,6 @@ const ManhwaDatabase = () => {
                   )}
                 </div>
 
-                {/* Synopsis with Read More */}
                 <div className="mb-4">
                   {(() => {
                     const isExpanded = expandedDescriptions.has(index);
@@ -965,7 +1254,6 @@ const ManhwaDatabase = () => {
                   })()}
                 </div>
 
-                {/* Genres */}
                 <div className="mb-3">
                   <div className="text-xs font-semibold text-gray-400 mb-1">Genres</div>
                   <div className="flex flex-wrap gap-1 mb-2">
@@ -976,7 +1264,6 @@ const ManhwaDatabase = () => {
                     ))}
                   </div>
                   
-                  {/* Categories */}
                   {manhwa.categories && manhwa.categories.length > 0 && (
                     <>
                       <div className="text-xs font-semibold text-gray-400 mb-1">Categories</div>
@@ -991,7 +1278,6 @@ const ManhwaDatabase = () => {
                   )}
                 </div>
 
-                {/* Details */}
                 <div className="text-sm text-gray-300 mb-4">
                   {manhwa.authors && manhwa.authors.length > 0 && (
                     <div className="flex items-center gap-2 mb-2">
@@ -1020,7 +1306,6 @@ const ManhwaDatabase = () => {
                   </span>
                 </div>
 
-                {/* Read Button - Only in Admin Mode */}
                 {adminMode && (
                   <button className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-500 hover:to-blue-500 transition-all">
                     Read Online
@@ -1031,7 +1316,6 @@ const ManhwaDatabase = () => {
           ))}
         </div>
 
-        {/* No Results */}
         {filteredData.length === 0 && (
           <div className="text-center py-12">
             <BookOpen size={64} className="text-gray-400 mx-auto mb-4" />
