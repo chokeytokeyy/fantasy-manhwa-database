@@ -15,6 +15,8 @@ const ManhwaDatabase = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const [expandedDescriptions, setExpandedDescriptions] = useState(new Set());
+  const [thumbnailData, setThumbnailData] = useState(new Map());
+  const [isThumbnailLoading, setIsThumbnailLoading] = useState(false);
 
   // Load sample data on component mount
   useEffect(() => {
@@ -114,7 +116,7 @@ const ManhwaDatabase = () => {
             status: cleanField(row[8]),
             rating: cleanField(row[9]),
             related_series: cleanField(row[10]),
-            thumbnail: cleanField(row[11]) || ""
+            thumbnail: thumbnailData.get(title) || ""
           };
 
           if (manhwa.title && manhwa.title.length > 1) {
@@ -133,6 +135,61 @@ const ManhwaDatabase = () => {
         console.error('CSV processing error:', error);
       } finally {
         setIsLoading(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleThumbnailUpload = (file) => {
+    if (!file) return;
+
+    setIsThumbnailLoading(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const csv = e.target.result;
+        console.log('Processing thumbnail CSV file...');
+        
+        const lines = csv.split(/\r?\n/);
+        const newThumbnailData = new Map();
+        let matchedCount = 0;
+
+        // Process each line looking for title and thumbnail URL
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const row = parseCSVLine(line);
+          
+          // Expecting format: Title, Thumbnail URL
+          if (row.length >= 2 && row[0] && row[1]) {
+            const title = cleanField(row[0]);
+            const thumbnailUrl = cleanField(row[1]);
+            
+            if (title && title.toLowerCase() !== 'title' && thumbnailUrl) {
+              newThumbnailData.set(title, thumbnailUrl);
+              matchedCount++;
+            }
+          }
+        }
+
+        setThumbnailData(newThumbnailData);
+        
+        // Update existing manhwa data with new thumbnails
+        if (manhwaData.length > 0) {
+          const updatedData = manhwaData.map(manhwa => ({
+            ...manhwa,
+            thumbnail: newThumbnailData.get(manhwa.title) || manhwa.thumbnail || ""
+          }));
+          setManhwaData(updatedData);
+        }
+
+        alert(`Successfully loaded ${matchedCount} thumbnail mappings!`);
+      } catch (error) {
+        alert('Error processing thumbnail CSV file: ' + error.message);
+        console.error('Thumbnail CSV processing error:', error);
+      } finally {
+        setIsThumbnailLoading(false);
       }
     };
     reader.readAsText(file);
@@ -415,6 +472,71 @@ const ManhwaDatabase = () => {
             <p className="text-sm text-gray-500 mt-2">
               CSV files only • Data will be stored locally in your browser
             </p>
+          </div>
+        </div>
+
+        {/* Thumbnail Upload Section */}
+        <div className="bg-white rounded-xl p-6 mb-6 shadow-lg border-2 border-green-200">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-green-800 mb-2 flex items-center gap-2">
+                <Upload size={20} />
+                Upload Thumbnail Mappings (Optional)
+              </h3>
+              <p className="text-sm text-gray-600">
+                Upload a CSV file with titles and thumbnail URLs to automatically add images to your manhwa cards.
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Expected format: Title, Thumbnail URL (one per line)
+              </p>
+            </div>
+            
+            {thumbnailData.size > 0 && (
+              <div className="text-green-600 text-sm font-medium">
+                🖼️ {thumbnailData.size} thumbnails loaded
+              </div>
+            )}
+          </div>
+          
+          <div
+            className={`border-2 border-dashed rounded-lg p-6 text-center transition-all duration-200 ${
+              isThumbnailLoading 
+                ? 'border-green-500 bg-green-50' 
+                : 'border-green-300 hover:border-green-400 hover:bg-green-50'
+            }`}
+          >
+            {isThumbnailLoading ? (
+              <div>
+                <FileText size={32} className="text-green-500 mx-auto mb-2 animate-spin" />
+                <p className="text-green-700">Processing thumbnails...</p>
+              </div>
+            ) : (
+              <>
+                <FileText size={32} className="text-green-500 mx-auto mb-2" />
+                <p className="text-gray-700 mb-3">
+                  Upload thumbnail mappings CSV
+                </p>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => handleThumbnailUpload(e.target.files[0])}
+                  className="hidden"
+                  id="thumbnail-upload"
+                />
+                <label
+                  htmlFor="thumbnail-upload"
+                  className="inline-block px-4 py-2 bg-green-600 text-white rounded-lg cursor-pointer hover:bg-green-700 transition-colors text-sm"
+                >
+                  Choose Thumbnail CSV
+                </label>
+                <div className="mt-3 p-3 bg-gray-50 rounded border text-xs text-gray-600">
+                  <strong>CSV Format Example:</strong><br/>
+                  Solo Leveling, https://example.com/solo-leveling.jpg<br/>
+                  Tower of God, https://example.com/tower-of-god.jpg<br/>
+                  Lookism, https://example.com/lookism.jpg
+                </div>
+              </>
+            )}
           </div>
         </div>
 
