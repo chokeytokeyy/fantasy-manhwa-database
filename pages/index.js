@@ -21,8 +21,8 @@ const ManhwaDatabase = () => {
   const [dbConnected, setDbConnected] = useState(false);
   const [dbLoading, setDbLoading] = useState(false);
   const [supabaseConfig, setSupabaseConfig] = useState({
-    url: '',
-    anonKey: ''
+    url: 'https://wemlzcwuqckptmcnjlng.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlbWx6Y3d1cWNrcHRtY25qbG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4MTI3MzEsImV4cCI6MjA2OTM4ODczMX0.q6JHd2SwmxKKRjrTuYsCBLgVpS8AxnJ95mrOeYlwrWI'
   });
   const [showDbConfig, setShowDbConfig] = useState(false);
   const [adminMode, setAdminMode] = useState(false);
@@ -33,10 +33,41 @@ const ManhwaDatabase = () => {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
 
-  // Load sample data on component mount
+  // Load sample data on component mount and auto-connect to database
   useEffect(() => {
     loadSampleData();
+    // Auto-connect to database if credentials are available
+    if (supabaseConfig.url && supabaseConfig.anonKey) {
+      autoConnectToDatabase();
+    }
   }, []);
+
+  const autoConnectToDatabase = async () => {
+    if (!supabaseConfig.url || !supabaseConfig.anonKey) return;
+
+    setDbLoading(true);
+    try {
+      const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=count`, {
+        headers: {
+          'apikey': supabaseConfig.anonKey,
+          'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        setDbConnected(true);
+        await loadDataFromDatabase();
+        console.log('Auto-connected to database successfully');
+      } else {
+        console.log('Auto-connection failed, using local data');
+      }
+    } catch (error) {
+      console.log('Auto-connection failed, using local data:', error.message);
+    } finally {
+      setDbLoading(false);
+    }
+  };
 
   // Admin authentication
   const adminLogin = async () => {
@@ -385,7 +416,6 @@ const ManhwaDatabase = () => {
 
       if (response.ok) {
         setDbConnected(true);
-        localStorage.setItem('supabase-config', JSON.stringify(supabaseConfig));
         await loadDataFromDatabase();
         alert('Successfully connected to database!');
       } else {
@@ -448,7 +478,9 @@ const ManhwaDatabase = () => {
 
     setDbLoading(true);
     try {
+      // Clear existing data if in admin mode
       if (adminMode) {
+        console.log('Clearing existing database records...');
         await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
           method: 'DELETE',
           headers: {
@@ -459,28 +491,61 @@ const ManhwaDatabase = () => {
         });
       }
 
-      const batchSize = 100;
+      // Upload in smaller batches with delay between requests
+      const batchSize = 50; // Reduced batch size
+      const totalBatches = Math.ceil(dataForSave.length / batchSize);
+      let successfulBatches = 0;
+      let failedBatches = 0;
+
+      console.log(`Starting upload: ${dataForSave.length} records in ${totalBatches} batches`);
+
       for (let i = 0; i < dataForSave.length; i += batchSize) {
+        const batchNumber = Math.floor(i / batchSize) + 1;
         const batch = dataForSave.slice(i, i + batchSize);
         
-        const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
-          method: 'POST',
-          headers: {
-            'apikey': supabaseConfig.anonKey,
-            'Authorization': `Bearer ${supabaseConfig.anonKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(batch)
-        });
+        try {
+          console.log(`Uploading batch ${batchNumber}/${totalBatches} (${batch.length} records)...`);
+          
+          const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
+            method: 'POST',
+            headers: {
+              'apikey': supabaseConfig.anonKey,
+              'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(batch)
+          });
 
-        if (!response.ok) {
-          throw new Error(`Failed to save batch ${Math.floor(i/batchSize) + 1}`);
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`Batch ${batchNumber} failed:`, response.status, errorText);
+            failedBatches++;
+          } else {
+            console.log(`Batch ${batchNumber} uploaded successfully`);
+            successfulBatches++;
+          }
+
+          // Add delay between batches to prevent rate limiting
+          if (i + batchSize < dataForSave.length) {
+            await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
+          }
+        } catch (error) {
+          console.error(`Error uploading batch ${batchNumber}:`, error);
+          failedBatches++;
         }
       }
 
-      alert(`Successfully saved ${dataForSave.length} manhwa entries to database!`);
+      const totalRecordsAttempted = successfulBatches * batchSize + (dataForSave.length % batchSize || 0);
+      const successfulRecords = successfulBatches * batchSize + (failedBatches === 0 && dataForSave.length % batchSize ? dataForSave.length % batchSize : 0);
+
+      if (failedBatches === 0) {
+        alert(`✅ Successfully saved all ${dataForSave.length} manhwa entries to database!`);
+      } else {
+        alert(`⚠️ Upload completed with issues:\n- Successful batches: ${successfulBatches}/${totalBatches}\n- Failed batches: ${failedBatches}\n- Estimated successful records: ~${successfulRecords}\n\nCheck console for details.`);
+      }
     } catch (error) {
-      alert(`Error saving to database: ${error.message}`);
+      alert(`❌ Error saving to database: ${error.message}`);
       console.error('Database save error:', error);
     } finally {
       setDbLoading(false);
@@ -728,21 +793,19 @@ const ManhwaDatabase = () => {
                 </div>
               )}
 
-              {adminMode && (
-                <div className="flex items-center gap-2">
-                  {dbConnected ? (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-green-600/20 border border-green-500 rounded-lg">
-                      <Wifi size={16} className="text-green-400" />
-                      <span className="text-green-400 text-sm font-medium">DB Connected</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 px-3 py-2 bg-red-600/20 border border-red-500 rounded-lg">
-                      <WifiOff size={16} className="text-red-400" />
-                      <span className="text-red-400 text-sm font-medium">DB Offline</span>
-                    </div>
-                  )}
-                </div>
-              )}
+              <div className="flex items-center gap-2">
+                {dbConnected ? (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-green-600/20 border border-green-500 rounded-lg">
+                    <Wifi size={16} className="text-green-400" />
+                    <span className="text-green-400 text-sm font-medium">DB Connected</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-red-600/20 border border-red-500 rounded-lg">
+                    <WifiOff size={16} className="text-red-400" />
+                    <span className="text-red-400 text-sm font-medium">DB Offline</span>
+                  </div>
+                )}
+              </div>
 
               <button
                 onClick={() => adminMode ? adminLogout() : setShowAdminLogin(true)}
