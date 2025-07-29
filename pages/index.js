@@ -284,180 +284,218 @@ const ManhwaDatabase = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-100 to-orange-200 flex items-center justify-center">
-        <div className="text-center">
-          <BookOpen size={64} className="text-amber-600 mx-auto mb-4 animate-spin" />
-          <h2 className="text-amber-800 text-xl font-semibold mb-2">Processing CSV File...</h2>
-          <p className="text-gray-600">Please wait while we load your manhwa data</p>
-        </div>
-      </div>
+      
+
+        
+
+          
+          
+Processing CSV File...
+
+          
+Please wait while we load your manhwa data
+
+
+        
+
+      
+
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-100 to-orange-200">
+    
+
       {/* Welcome Modal */}
       {showWelcomeModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl border-2 border-amber-300">
-            <div className="text-center mb-6">
-              <BookOpen size={48} className="text-amber-600 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-amber-800 mb-2">Welcome to Fantasy Manhwa Archive!</h2>
-            </div>
-            
-            <div className="text-gray-700 space-y-3 mb-6">
-              <p className="text-sm">
-                ⚠️ <strong>Important Notice:</strong> This website is in its very early stages, so please understand that it's still under development.
-              </p>
-              
-              <p className="text-sm">
-                📂 <strong>Data Upload Required:</strong> To use this database, you need to upload the manhwa data file yourself. The website doesn't come pre-loaded with data.
-              </p>
-              
-              <p className="text-sm">
-                💾 <strong>Download the Data:</strong> Click the link below to download the latest manhwa database file, then upload it using the file upload section.
-              </p>
-            </div>
+        
 
-            <div className="space-y-4">
-              <a
-                href="https://mega.nz/file/8dYBhJQD#RdQRx7ut45tUFNrlPJTqskCCZ9XeNEKWWkb_cnZ1HJ4"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full inline-block text-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
-              >
-                📥 Download Manhwa Database (MEGA)
-              </a>
+          
+
+            
+
               
-              <button
-                onClick={() => setShowWelcomeModal(false)}
+              
+Welcome to Fantasy Manhwa Archive!
+
+            
+
+            
+            
+
+              
+
+                ⚠️ Important Notice: This website is in its very early stages, so please understand that it's still under development.
+              
+
+
+              
+              
+
+                📂 Data Upload Required: To use this database, you need to upload the manhwa data file yourself. The website doesn't come pre-loaded with data.
+              
+
+
+              
+              
+
+                💾 Download the Data: Click the link below to download the latest manhwa database file, then upload it using the file upload section.
+              
+
+
+            
+
+
+            
+
+              
+                📥 Download Manhwa Database (MEGA)
+              
+              
+               setShowWelcomeModal(false)}
                 className="w-full px-6 py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors"
               >
                 Got it, let's start!
-              </button>
-            </div>
-          </div>
-        </div>
+              
+            
+
+          
+
+        
+
       )}
 
       {/* Header */}
-      <header className="bg-gradient-to-r from-amber-800 to-orange-600 text-white p-6 shadow-lg">
-        <div className="max-w-6xl mx-auto flex justify-between items-center flex-wrap">
-          <div className="flex items-center gap-3">
-            <BookOpen size={32} className="text-amber-200" />
-            <h1 className="text-3xl font-bold text-amber-100 font-serif">
-              ⚔️ Fantasy Manhwa Archive ⚔️
-            </h1>
-          </div>
-          
-          <div className="text-amber-200 text-sm">
-            📖 {manhwaData.length} titles loaded
-          </div>
-        </div>
-      </header>
+      
 
-      <div className="max-w-6xl mx-auto p-8">
-        {/* File Upload Section */}
-        <div className="bg-white rounded-xl p-6 mb-6 shadow-lg border-2 border-amber-200">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-lg font-semibold text-amber-800 mb-2 flex items-center gap-2">
-                <Upload size={20} />
-                Upload Manhwa Database
-              </h3>
-              <p className="text-sm text-gray-600">
-                First, download the data file, then upload it here to load the manhwa database.
-              </p>
-            </div>
-            
-            <a
-              href="https://mega.nz/file/8dYBhJQD#RdQRx7ut45tUFNrlPJTqskCCZ9XeNEKWWkb_cnZ1HJ4"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all text-sm whitespace-nowrap"
-            >
-              📥 Download Data
-            </a>
-          </div>
+        
+
           
-          <div
-            className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
-              isDragging 
-                ? 'border-amber-500 bg-amber-50' 
-                : 'border-amber-300 hover:border-amber-400 hover:bg-amber-50'
-            }`}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-          >
-            <FileText size={48} className="text-amber-500 mx-auto mb-4" />
-            <p className="text-gray-700 mb-4">
+
+            
+            
+
+              ⚔️ Fantasy Manhwa Archive ⚔️
+            
+
+          
+
+          
+          
+
+            📖 {manhwaData.length} titles loaded
+          
+
+        
+
+      
+
+
+      
+
+        {/* File Upload Section */}
+        
+
+          
+
+            
+
+              
+
+                
+                Upload Manhwa Database
+              
+
+              
+
+                First, download the data file, then upload it here to load the manhwa database.
+              
+
+
+            
+
+            
+            
+              📥 Download Data
+            
+          
+
+          
+          
+
+            
+            
+
               Drag and drop your CSV file here, or click to browse
-            </p>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => handleFileUpload(e.target.files[0])}
+            
+
+
+            No file chosen handleFileUpload(e.target.files[0])}
               className="hidden"
               id="file-upload"
             />
-            <label
-              htmlFor="file-upload"
-              className="inline-block px-6 py-3 bg-amber-600 text-white rounded-lg cursor-pointer hover:bg-amber-700 transition-colors"
-            >
+            
               Choose CSV File
-            </label>
-            <p className="text-sm text-gray-500 mt-2">
+            
+            
+
               CSV files only • Data will be stored locally in your browser
-            </p>
-          </div>
-        </div>
+            
+
+
+          
+
+        
+
 
         {/* Search and Filters */}
-        <div className="bg-white rounded-xl p-6 mb-6 shadow-lg border-2 border-amber-200">
-          <div className="relative mb-4">
-            <Search size={20} className="absolute left-3 top-3.5 text-amber-600" />
-            <input
-              type="text"
-              placeholder="🔍 Search by title, synopsis, genre, author..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+        
+
+          
+
+            
+
+            
+{searchTerm}
+ setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 border-2 border-amber-300 rounded-lg text-base focus:outline-none focus:border-amber-500"
             />
-          </div>
+          
+
 
           {/* Filter Toggle */}
-          <div className="flex justify-between items-center mb-4">
-            <button
-              onClick={() => setShowFilters(!showFilters)}
+          
+
+             setShowFilters(!showFilters)}
               className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
             >
-              <Filter size={16} />
+              
               {showFilters ? 'Hide Filters' : 'Show Filters'}
-            </button>
+            
             
             {Object.values(selectedFilters).some(arr => arr.length > 0) && (
-              <button
-                onClick={clearAllFilters}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                <X size={16} />
+              
+                
                 Clear All
-              </button>
+              
             )}
-          </div>
+          
+
 
           {/* Filters */}
           {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 pt-4 border-t border-amber-200">
+            
+
               {/* Genres */}
-              <div>
-                <h4 className="font-semibold text-amber-800 mb-2 text-sm">📚 Genres</h4>
-                <div className="flex flex-wrap gap-1">
+              
+
+                
+📚 Genres
+
+                
+
                   {getUniqueValues('genres').map(genre => (
-                    <button
-                      key={genre}
-                      onClick={() => toggleFilter('genres', genre)}
+                     toggleFilter('genres', genre)}
                       className={`px-2 py-1 text-xs rounded-full border transition-colors ${
                         selectedFilters.genres.includes(genre)
                           ? 'bg-amber-600 text-white border-amber-600'
@@ -465,19 +503,23 @@ const ManhwaDatabase = () => {
                       }`}
                     >
                       {genre}
-                    </button>
+                    
                   ))}
-                </div>
-              </div>
+                
+
+              
+
 
               {/* Categories */}
-              <div>
-                <h4 className="font-semibold text-amber-800 mb-2 text-sm">🏷️ Categories</h4>
-                <div className="flex flex-wrap gap-1">
+              
+
+                
+🏷️ Categories
+
+                
+
                   {getUniqueValues('categories').map(category => (
-                    <button
-                      key={category}
-                      onClick={() => toggleFilter('categories', category)}
+                     toggleFilter('categories', category)}
                       className={`px-2 py-1 text-xs rounded-full border transition-colors ${
                         selectedFilters.categories.includes(category)
                           ? 'bg-amber-600 text-white border-amber-600'
@@ -485,16 +527,123 @@ const ManhwaDatabase = () => {
                       }`}
                     >
                       {category}
-                    </button>
+                    
                   ))}
-                </div>
-              </div>
+                
+
+              
+
 
               {/* Rating */}
-              <div>
-                <h4 className="font-semibold text-amber-800 mb-2 text-sm">⭐ Rating</h4>
-                <div className="flex flex-wrap gap-1">
+              
+
+                
+⭐ Rating
+
+                
+
                   {getUniqueValues('rating').map(rating => (
-                    <button
-                      key={rating}
-                      onClick={() => toggleFilter('r
+                     toggleFilter('rating', rating)}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFilters.rating.includes(rating)
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                      }`}
+                    >
+                      {rating}
+                    
+                  ))}
+                
+
+              
+
+
+              {/* Chapters */}
+              
+
+                
+📖 Chapters
+
+                
+
+                  {getUniqueValues('chapters').map(chapters => (
+                     toggleFilter('chapters', chapters)}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFilters.chapters.includes(chapters)
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                      }`}
+                    >
+                      {chapters}
+                    
+                  ))}
+                
+
+              
+
+            
+
+          )}
+          
+          
+
+            📖 Found {filteredData.length} manhwa titles
+          
+
+
+        
+
+
+        {/* Manhwa Grid */}
+        
+
+          {filteredData.map((manhwa, index) => (
+            
+
+              {/* Title and Rating */}
+              
+
+                
+
+                  {manhwa.title}
+                
+
+                
+
+                  
+                  {manhwa.rating}
+                
+
+              
+
+
+              {/* Synopsis */}
+              
+
+                {(() => {
+                  const isExpanded = expandedDescriptions.has(index);
+                  const { text: truncatedText, needsTruncation } = truncateText(manhwa.synopsis);
+                  const displayText = isExpanded ? manhwa.synopsis : truncatedText;
+                  
+                  return (
+                    <>
+                      
+
+                        {displayText}
+                      
+
+
+                      {needsTruncation && (
+                         toggleDescription(index)}
+                          className="mt-2 text-amber-600 hover:text-amber-800 text-sm font-medium transition-colors"
+                        >
+                          {isExpanded ? '▲ Show Less' : '▼ Read More'}
+                        
+                      )}
+                    
+                  );
+                })()}
+              
+
+
+              {/* Genres */}
