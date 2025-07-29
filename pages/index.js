@@ -32,7 +32,8 @@ const ManhwaDatabase = () => {
         year_released: "2024",
         chapters: "Less than 100",
         status: "Ongoing",
-        rating: "Decent"
+        rating: "Decent",
+        thumbnail: ""
       },
       {
         title: "1 Second",
@@ -43,7 +44,8 @@ const ManhwaDatabase = () => {
         year_released: "2019",
         chapters: "Less than 100",
         status: "Unknown",
-        rating: "Good"
+        rating: "Good",
+        thumbnail: ""
       },
       {
         title: "1331",
@@ -54,7 +56,8 @@ const ManhwaDatabase = () => {
         year_released: "2022",
         chapters: "71",
         status: "Complete",
-        rating: "Recommended"
+        rating: "Recommended",
+        thumbnail: ""
       }
     ];
     setManhwaData(sampleData);
@@ -110,7 +113,8 @@ const ManhwaDatabase = () => {
             chapters: cleanField(row[7]),
             status: cleanField(row[8]),
             rating: cleanField(row[9]),
-            related_series: cleanField(row[10])
+            related_series: cleanField(row[10]),
+            thumbnail: cleanField(row[11]) || ""
           };
 
           if (manhwa.title && manhwa.title.length > 1) {
@@ -541,102 +545,135 @@ const ManhwaDatabase = () => {
         {/* Manhwa Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredData.map((manhwa, index) => (
-            <div key={index} className="bg-white rounded-xl p-6 shadow-lg border-2 border-amber-200">
-              {/* Title and Rating */}
-              <div className="flex justify-between items-start mb-3">
-                <h3 className="text-lg font-bold text-amber-800 flex-1 pr-2">
+            <div key={index} className="bg-white rounded-xl shadow-lg border-2 border-amber-200 overflow-hidden">
+              {/* Thumbnail */}
+              <div className="relative h-48 bg-gradient-to-br from-amber-100 to-orange-100">
+                {manhwa.thumbnail && manhwa.thumbnail.trim() !== "" ? (
+                  <img
+                    src={manhwa.thumbnail}
+                    alt={manhwa.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                ) : null}
+                <div 
+                  className={`w-full h-full flex items-center justify-center ${manhwa.thumbnail && manhwa.thumbnail.trim() !== "" ? 'hidden' : 'flex'}`}
+                  style={{display: manhwa.thumbnail && manhwa.thumbnail.trim() !== "" ? 'none' : 'flex'}}
+                >
+                  <div className="text-center">
+                    <BookOpen size={48} className="text-amber-400 mx-auto mb-2" />
+                    <p className="text-amber-600 font-medium text-sm">{manhwa.title}</p>
+                  </div>
+                </div>
+                
+                {/* Rating Badge */}
+                <div 
+                  className="absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 shadow-lg"
+                  style={{ 
+                    backgroundColor: getRatingColor(manhwa.rating),
+                    color: 'white'
+                  }}
+                >
+                  <Star size={12} fill="currentColor" />
+                  {manhwa.rating}
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                {/* Title */}
+                <h3 className="text-lg font-bold text-amber-800 mb-3">
                   {manhwa.title}
                 </h3>
-                <div className="flex items-center gap-1" style={{ color: getRatingColor(manhwa.rating) }}>
-                  <Star size={16} fill="currentColor" />
-                  <span className="text-sm font-medium">{manhwa.rating}</span>
-                </div>
-              </div>
 
-              {/* Synopsis with Read More */}
-              <div className="mb-4">
-                {(() => {
-                  const isExpanded = expandedDescriptions.has(index);
-                  const { text: truncatedText, needsTruncation } = truncateText(manhwa.synopsis);
-                  const displayText = isExpanded ? manhwa.synopsis : truncatedText;
+                {/* Synopsis with Read More */}
+                <div className="mb-4">
+                  {(() => {
+                    const isExpanded = expandedDescriptions.has(index);
+                    const { text: truncatedText, needsTruncation } = truncateText(manhwa.synopsis);
+                    const displayText = isExpanded ? manhwa.synopsis : truncatedText;
+                    
+                    return (
+                      <>
+                        <p className="text-gray-700 text-sm leading-relaxed">
+                          {displayText}
+                        </p>
+                        {needsTruncation && (
+                          <button
+                            onClick={() => toggleDescription(index)}
+                            className="mt-2 text-amber-600 hover:text-amber-800 text-sm font-medium transition-colors"
+                          >
+                            {isExpanded ? '▲ Show Less' : '▼ Read More'}
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Genres */}
+                <div className="mb-3">
+                  <div className="text-xs font-semibold text-amber-800 mb-1">📚 Genres</div>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {manhwa.genres && manhwa.genres.map((genre, i) => (
+                      <span key={i} className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full border border-amber-300">
+                        {genre}
+                      </span>
+                    ))}
+                  </div>
                   
-                  return (
+                  {/* Categories */}
+                  {manhwa.categories && manhwa.categories.length > 0 && (
                     <>
-                      <p className="text-gray-700 text-sm leading-relaxed">
-                        {displayText}
-                      </p>
-                      {needsTruncation && (
-                        <button
-                          onClick={() => toggleDescription(index)}
-                          className="mt-2 text-amber-600 hover:text-amber-800 text-sm font-medium transition-colors"
-                        >
-                          {isExpanded ? '▲ Show Less' : '▼ Read More'}
-                        </button>
-                      )}
+                      <div className="text-xs font-semibold text-amber-800 mb-1">🏷️ Categories</div>
+                      <div className="flex flex-wrap gap-1">
+                        {manhwa.categories.map((category, i) => (
+                          <span key={i} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full border border-blue-300">
+                            {category}
+                          </span>
+                        ))}
+                      </div>
                     </>
-                  );
-                })()}
-              </div>
-
-              {/* Genres */}
-              <div className="mb-3">
-                <div className="text-xs font-semibold text-amber-800 mb-1">📚 Genres</div>
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {manhwa.genres && manhwa.genres.map((genre, i) => (
-                    <span key={i} className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full border border-amber-300">
-                      {genre}
-                    </span>
-                  ))}
+                  )}
                 </div>
-                
-                {/* Categories */}
-                {manhwa.categories && manhwa.categories.length > 0 && (
-                  <>
-                    <div className="text-xs font-semibold text-amber-800 mb-1">🏷️ Categories</div>
-                    <div className="flex flex-wrap gap-1">
-                      {manhwa.categories.map((category, i) => (
-                        <span key={i} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full border border-blue-300">
-                          {category}
-                        </span>
-                      ))}
+
+                {/* Details */}
+                <div className="text-sm text-gray-600 mb-4">
+                  {manhwa.authors && manhwa.authors.length > 0 && (
+                    <div className="flex items-center gap-2 mb-2">
+                      <BookOpen size={14} className="text-amber-600" />
+                      <span>{manhwa.authors.join(', ')}</span>
                     </div>
-                  </>
-                )}
-              </div>
+                  )}
+                  
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="flex items-center gap-1">
+                      <Calendar size={14} className="text-amber-600" />
+                      <span>{manhwa.year_released}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Hash size={14} className="text-amber-600" />
+                      <span>{manhwa.chapters}</span>
+                    </div>
+                  </div>
 
-              {/* Details */}
-              <div className="text-sm text-gray-600 mb-4">
-                {manhwa.authors && manhwa.authors.length > 0 && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <BookOpen size={14} className="text-amber-600" />
-                    <span>{manhwa.authors.join(', ')}</span>
-                  </div>
-                )}
-                
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="flex items-center gap-1">
-                    <Calendar size={14} className="text-amber-600" />
-                    <span>{manhwa.year_released}</span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <Hash size={14} className="text-amber-600" />
-                    <span>{manhwa.chapters}</span>
-                  </div>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                    manhwa.status === 'Ongoing' ? 'bg-green-100 text-green-800' : 
+                    manhwa.status === 'Complete' ? 'bg-blue-100 text-blue-800' : 
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {manhwa.status}
+                  </span>
                 </div>
 
-                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                  manhwa.status === 'Ongoing' ? 'bg-green-100 text-green-800' : 
-                  manhwa.status === 'Complete' ? 'bg-blue-100 text-blue-800' : 
-                  'bg-gray-100 text-gray-800'
-                }`}>
-                  {manhwa.status}
-                </span>
+                {/* Read Button */}
+                <button className="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg font-medium hover:from-amber-700 hover:to-orange-700 transition-all">
+                  🔗 Link Coming Soon
+                </button>
               </div>
-
-              {/* Read Button */}
-              <button className="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg font-medium hover:from-amber-700 hover:to-orange-700 transition-all">
-                🔗 Link Coming Soon
-              </button>
             </div>
           ))}
         </div>
