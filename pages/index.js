@@ -307,18 +307,18 @@ const ManhwaDatabase = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-      {/* NEW Welcome Modal */}
+      {/* NEW Welcome Modal - Mobile Optimized */}
       {showWelcomeModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl border border-slate-600">
-            <div className="text-center mb-6">
-              <BookOpen size={48} className="text-blue-400 mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-white mb-3">Welcome to Manhwa Database!</h2>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-3">
+          <div className="bg-slate-800 rounded-2xl p-4 sm:p-6 max-w-lg w-full shadow-2xl border border-slate-600 mx-3 max-h-[90vh] overflow-y-auto">
+            <div className="text-center mb-4 sm:mb-6">
+              <BookOpen size={40} className="text-blue-400 mx-auto mb-3 sm:mb-4" />
+              <h2 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">Welcome to Manhwa Database!</h2>
               <div className="w-12 h-1 bg-purple-500 mx-auto rounded-full"></div>
             </div>
             
-            <div className="text-gray-300 space-y-4 mb-6 text-sm leading-relaxed">
-              <div className="bg-slate-700/30 p-4 rounded-lg border-l-4 border-yellow-500">
+            <div className="text-gray-300 space-y-3 sm:space-y-4 mb-4 sm:mb-6 text-xs sm:text-sm leading-relaxed">
+              <div className="bg-slate-700/30 p-3 sm:p-4 rounded-lg border-l-4 border-yellow-500">
                 <p><strong className="text-yellow-400">Work in Progress:</strong> This database is currently under active development. Thank you for your patience as we continue to improve and expand the platform.</p>
               </div>
               
@@ -326,7 +326,7 @@ const ManhwaDatabase = () => {
               
               <p>The database automatically loads with <strong className="text-purple-400">hundreds of manhwa titles</strong>, complete with detailed information, community ratings, and advanced filtering options to help you discover your next favorite read.</p>
               
-              <div className="bg-slate-700/30 p-3 rounded-lg">
+              <div className="bg-slate-700/30 p-2 sm:p-3 rounded-lg">
                 <p className="text-center text-xs text-gray-400">✨ Ready to explore? The collection is loaded and waiting for you!</p>
               </div>
             </div>
@@ -334,7 +334,7 @@ const ManhwaDatabase = () => {
             <div className="space-y-3">
               <button
                 onClick={() => setShowWelcomeModal(false)}
-                className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-500 hover:to-blue-500 transition-all transform hover:scale-105"
+                className="w-full px-4 sm:px-6 py-3 sm:py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-500 hover:to-blue-500 transition-all transform hover:scale-105 text-sm sm:text-base"
               >
                 🚀 Start Exploring!
               </button>
@@ -344,7 +344,7 @@ const ManhwaDatabase = () => {
                   setShowWelcomeModal(false);
                   setShowCreditsModal(true);
                 }}
-                className="w-full px-6 py-3 bg-slate-700 text-gray-300 rounded-lg font-medium hover:bg-slate-600 transition-colors border border-slate-600"
+                className="w-full px-4 sm:px-6 py-3 sm:py-3 bg-slate-700 text-gray-300 rounded-lg font-medium hover:bg-slate-600 transition-colors border border-slate-600 text-sm sm:text-base"
               >
                 📜 View Credits & Tribute
               </button>
