@@ -266,18 +266,19 @@ const ManhwaDatabase = () => {
     setExpandedDescriptions(newExpanded);
   };
 
-  const truncateText = (text, maxLines = 4) => {
-    if (!text) return '';
-    const words = text.split(' ');
-    const wordsPerLine = 12; // Approximate words per line
-    const maxWords = maxLines * wordsPerLine;
+  const truncateText = (text, maxLength = 200) => {
+    if (!text) return { text: '', needsTruncation: false };
     
-    if (words.length <= maxWords) {
+    if (text.length <= maxLength) {
       return { text, needsTruncation: false };
     }
     
+    const truncated = text.substring(0, maxLength);
+    const lastSpace = truncated.lastIndexOf(' ');
+    const finalText = lastSpace > 0 ? truncated.substring(0, lastSpace) : truncated;
+    
     return {
-      text: words.slice(0, maxWords).join(' '),
+      text: finalText + '...',
       needsTruncation: true
     };
   };
@@ -320,7 +321,7 @@ const ManhwaDatabase = () => {
             </div>
 
             <div className="space-y-4">
-              
+              <a
                 href="https://mega.nz/file/8dYBhJQD#RdQRx7ut45tUFNrlPJTqskCCZ9XeNEKWWkb_cnZ1HJ4"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -370,7 +371,7 @@ const ManhwaDatabase = () => {
               </p>
             </div>
             
-            
+            <a
               href="https://mega.nz/file/8dYBhJQD#RdQRx7ut45tUFNrlPJTqskCCZ9XeNEKWWkb_cnZ1HJ4"
               target="_blank"
               rel="noopener noreferrer"
@@ -552,7 +553,7 @@ const ManhwaDatabase = () => {
                 </div>
               </div>
 
-              {/* Synopsis */}
+              {/* Synopsis with Read More */}
               <div className="mb-4">
                 {(() => {
                   const isExpanded = expandedDescriptions.has(index);
@@ -660,7 +661,7 @@ const ManhwaDatabase = () => {
             This database is inspired by the amazing community-driven manhwa spreadsheet
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            
+            <a
               href="https://www.reddit.com/r/manhwa/comments/1ioddo5/final_manhwa_list_spreadsheet/"
               target="_blank"
               rel="noopener noreferrer"
@@ -668,7 +669,7 @@ const ManhwaDatabase = () => {
             >
               📱 Reddit Thread
             </a>
-            
+            <a
               href="https://docs.google.com/spreadsheets/d/1ZluFOVtJCv-cQLXWhmCLNoZFIMLV0eTrqozwyEb1zw8/edit?usp=drivesdk"
               target="_blank"
               rel="noopener noreferrer"
