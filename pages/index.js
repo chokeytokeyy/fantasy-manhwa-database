@@ -36,11 +36,17 @@ const ManhwaDatabase = () => {
   // Load sample data on component mount and auto-connect to database
   useEffect(() => {
     const initializeApp = async () => {
+      console.log('Initializing app...');
+      
       // Auto-connect to database if credentials are available
       if (supabaseConfig.url && supabaseConfig.anonKey) {
+        console.log('Database credentials found, attempting connection...');
         setDbLoading(true);
+        
         try {
-          const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=count`, {
+          // Test database connection
+          console.log('Testing database connection...');
+          const testResponse = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=count`, {
             headers: {
               'apikey': supabaseConfig.anonKey,
               'Authorization': `Bearer ${supabaseConfig.anonKey}`,
@@ -48,22 +54,65 @@ const ManhwaDatabase = () => {
             }
           });
 
-          if (response.ok) {
+          console.log('Database test response status:', testResponse.status);
+
+          if (testResponse.ok) {
             setDbConnected(true);
-            await loadDataFromDatabase(); // Load database data
-            console.log('Auto-connected to database and loaded data successfully');
+            console.log('Database connected successfully, loading data...');
+            
+            // Load actual data
+            const dataResponse = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=*`, {
+              headers: {
+                'apikey': supabaseConfig.anonKey,
+                'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            console.log('Data response status:', dataResponse.status);
+
+            if (dataResponse.ok) {
+              const data = await dataResponse.json();
+              console.log(`Raw data from database: ${data.length} records`);
+              console.log('First record sample:', data[0]);
+              
+              const formattedData = data.map(item => ({
+                title: item.title || '',
+                synopsis: item.synopsis || '',
+                genres: item.genres || [],
+                categories: item.categories || [],
+                authors: item.authors || [],
+                year_released: item.year_released || '',
+                chapters: item.chapters || '',
+                status: item.status || '',
+                rating: item.rating || '',
+                thumbnail: item.thumbnail || ''
+              }));
+              
+              const uniqueData = removeDuplicates(formattedData, 'title');
+              console.log(`Setting ${uniqueData.length} unique records in app state`);
+              setManhwaData(uniqueData);
+              console.log('Database data loaded successfully!');
+            } else {
+              console.error('Failed to fetch data:', dataResponse.status, await dataResponse.text());
+              console.log('Loading sample data as fallback');
+              loadSampleData();
+            }
           } else {
-            console.log('Auto-connection failed, loading sample data');
-            loadSampleData(); // Fallback to sample data
+            console.error('Database connection failed:', testResponse.status, await testResponse.text());
+            console.log('Loading sample data as fallback');
+            loadSampleData();
           }
         } catch (error) {
-          console.log('Auto-connection failed, loading sample data:', error.message);
-          loadSampleData(); // Fallback to sample data
+          console.error('Database initialization error:', error);
+          console.log('Loading sample data as fallback');
+          loadSampleData();
         } finally {
           setDbLoading(false);
         }
       } else {
-        loadSampleData(); // Load sample data if no database credentials
+        console.log('No database credentials, loading sample data');
+        loadSampleData();
       }
     };
 
@@ -934,7 +983,88 @@ const ManhwaDatabase = () => {
       </header>
 
       <div className="max-w-6xl mx-auto p-4 md:p-6">
-        {/* Admin File Upload Section */}
+        {/* Debug Info for Development */}
+        {adminMode && (
+          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-yellow-600">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                  🔧 Debug Information
+                </h3>
+                <p className="text-sm text-gray-300">
+                  Current app state and database connection details
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="bg-slate-700/50 p-3 rounded-lg">
+                <h4 className="text-white font-medium mb-2">Database Status</h4>
+                <p className="text-gray-300">Connected: {dbConnected ? '✅ Yes' : '❌ No'}</p>
+                <p className="text-gray-300">Loading: {dbLoading ? '⏳ Yes' : '✅ No'}</p>
+                <p className="text-gray-300">URL: {supabaseConfig.url ? '✅ Set' : '❌ Missing'}</p>
+                <p className="text-gray-300">Key: {supabaseConfig.anonKey ? '✅ Set' : '❌ Missing'}</p>
+              </div>
+              
+              <div className="bg-slate-700/50 p-3 rounded-lg">
+                <h4 className="text-white font-medium mb-2">Data Status</h4>
+                <p className="text-gray-300">Records Loaded: {manhwaData.length}</p>
+                <p className="text-gray-300">Filtered Results: {filteredData.length}</p>
+                <p className="text-gray-300">Search Term: "{searchTerm}"</p>
+                <p className="text-gray-300">Active Filters: {Object.values(selectedFilters).flat().length}</p>
+              </div>
+            </div>
+            
+            <div className="mt-4 flex gap-2 flex-wrap">
+              <button
+                onClick={() => {
+                  console.log('=== DEBUG INFO ===');
+                  console.log('DB Connected:', dbConnected);
+                  console.log('DB Loading:', dbLoading);
+                  console.log('Manhwa Data Length:', manhwaData.length);
+                  console.log('Sample Records:', manhwaData.slice(0, 3));
+                  console.log('Supabase Config:', { url: supabaseConfig.url.substring(0, 20) + '...', hasKey: !!supabaseConfig.anonKey });
+                }}
+                className="px-3 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors text-sm"
+              >
+                🐛 Log Debug Info
+              </button>
+              
+              <button
+                onClick={async () => {
+                  console.log('=== TESTING DATABASE CONNECTION ===');
+                  try {
+                    const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=count`, {
+                      headers: {
+                        'apikey': supabaseConfig.anonKey,
+                        'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+                        'Content-Type': 'application/json'
+                      }
+                    });
+                    console.log('Test Response Status:', response.status);
+                    const data = await response.json();
+                    console.log('Test Response Data:', data);
+                  } catch (error) {
+                    console.error('Test Connection Error:', error);
+                  }
+                }}
+                className="px-3 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors text-sm"
+              >
+                🔗 Test Connection
+              </button>
+              
+              <button
+                onClick={() => {
+                  console.log('=== FORCE RELOAD FROM DATABASE ===');
+                  loadDataFromDatabase();
+                }}
+                className="px-3 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors text-sm"
+              >
+                🔄 Force Reload
+              </button>
+            </div>
+          </div>
+        )}
         {adminMode && (
           <div className="bg-gradient-to-br from-yellow-800/90 to-orange-900/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border-2 border-yellow-500">
             <div className="flex justify-between items-start mb-4">
