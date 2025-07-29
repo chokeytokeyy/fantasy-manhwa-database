@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Upload, BookOpen, Star, Calendar, Hash, Filter, X, FileText, Settings, Eye, EyeOff } from 'lucide-react';
+import { Search, Upload, BookOpen, Star, Calendar, Hash, Filter, X, FileText, Settings, Eye, EyeOff, Database, Wifi, WifiOff, Save, Download, Lock, Unlock, User, Shield } from 'lucide-react';
 
 const ManhwaDatabase = () => {
   const [manhwaData, setManhwaData] = useState([]);
@@ -19,11 +19,300 @@ const ManhwaDatabase = () => {
   const [isThumbnailLoading, setIsThumbnailLoading] = useState(false);
   const [showUploadSection, setShowUploadSection] = useState(true);
   const [betaMode, setBetaMode] = useState(false);
+  const [dbConnected, setDbConnected] = useState(false);
+  const [dbLoading, setDbLoading] = useState(false);
+  const [supabaseConfig, setSupabaseConfig] = useState({
+    url: '',
+    anonKey: ''
+  });
+  const [showDbConfig, setShowDbConfig] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
+  const [adminCredentials, setAdminCredentials] = useState({
+    username: '',
+    password: ''
+  });
+  const [showAdminLogin, setShowAdminLogin] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(false);
 
   // Load sample data on component mount
   useEffect(() => {
     loadSampleData();
+    // Load saved Supabase config
+    const savedConfig = localStorage.getItem('supabase-config');
+    if (savedConfig) {
+      setSupabaseConfig(JSON.parse(savedConfig));
+    }
+    // Check if admin is logged in
+    const adminSession = localStorage.getItem('admin-session');
+    if (adminSession) {
+      const session = JSON.parse(adminSession);
+      // Check if session is still valid (24 hours)
+      if (Date.now() - session.timestamp < 24 * 60 * 60 * 1000) {
+        setAdminMode(true);
+      } else {
+        localStorage.removeItem('admin-session');
+      }
+    }
   }, []);
+
+  // Admin authentication
+  const adminLogin = async () => {
+    if (!adminCredentials.username || !adminCredentials.password) {
+      alert('Please enter both username and password');
+      return;
+    }
+
+    setAdminLoading(true);
+    try {
+      // Simple admin check - you can replace this with your own logic
+      const validCredentials = [
+        { username: 'admin', password: 'manhwa2024' },
+        { username: 'manhwaadmin', password: 'database123' }
+      ];
+
+      const isValid = validCredentials.some(
+        cred => cred.username === adminCredentials.username && cred.password === adminCredentials.password
+      );
+
+      if (isValid) {
+        setAdminMode(true);
+        setShowAdminLogin(false);
+        // Save session for 24 hours
+        localStorage.setItem('admin-session', JSON.stringify({
+          username: adminCredentials.username,
+          timestamp: Date.now()
+        }));
+        alert('Admin login successful!');
+      } else {
+        alert('Invalid credentials');
+      }
+    } catch (error) {
+      alert('Login failed: ' + error.message);
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  const adminLogout = () => {
+    setAdminMode(false);
+    setAdminCredentials({ username: '', password: '' });
+    localStorage.removeItem('admin-session');
+  };
+
+  // Enhanced file upload for admin mode
+  const handleAdminFileUpload = async (file) => {
+    if (!file) return;
+
+    if (!dbConnected) {
+      alert('Please connect to database first');
+      return;
+    }
+
+    setIsLoading(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const csv = e.target.result;
+        console.log('Processing CSV file for database upload...');
+        
+        const lines = csv.split(/\r?\n/);
+        let dataStartIndex = 8;
+        const processedData = [];
+
+        // Process CSV data (same logic as before)
+        for (let i = dataStartIndex; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const row = parseCSVLine(line);
+          
+          if (row.length < 11 || !row[1] || row[1].trim() === '' || row[1].toLowerCase() === 'title') {
+            continue;
+          }
+
+          const title = cleanField(row[1]);
+          const synopsis = cleanField(row[2]);
+          const genresText = cleanField(row[3]);
+          const categoriesText = cleanField(row[4]);
+          const authorsText = cleanField(row[5]);
+
+          const genres = genresText ? 
+            genresText.split(',').map(g => g.trim()).filter(g => g && g.length > 0 && g.length < 50) : [];
+
+          const categories = categoriesText ? 
+            categoriesText.split(',').map(c => c.trim()).filter(c => c && c.length > 0 && c.length < 100) : [];
+
+          const authors = authorsText ? 
+            authorsText.split(',').map(a => a.trim()).filter(a => a && a.length > 0 && a.length < 100) : [];
+
+          const manhwa = {
+            title: title,
+            synopsis: synopsis,
+            genres: genres,
+            categories: categories,
+            authors: authors,
+            year_released: cleanField(row[6]),
+            chapters: cleanField(row[7]),
+            status: cleanField(row[8]),
+            rating: cleanField(row[9]),
+            related_series: cleanField(row[10]),
+            thumbnail: thumbnailData.get(title) || ""
+          };
+
+          if (manhwa.title && manhwa.title.length > 1) {
+            processedData.push(manhwa);
+          }
+        }
+
+        if (processedData.length > 0) {
+          // Update local data
+          setManhwaData(processedData);
+          
+          // Save directly to database
+          await saveToDatabase(processedData);
+          
+          alert(`Successfully processed and uploaded ${processedData.length} manhwa entries to database!`);
+        } else {
+          alert('No valid manhwa data found. Please check the CSV format.');
+        }
+      } catch (error) {
+        alert('Error processing CSV file: ' + error.message);
+        console.error('CSV processing error:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // Supabase integration functions
+  const connectToDatabase = async () => {
+    if (!supabaseConfig.url || !supabaseConfig.anonKey) {
+      alert('Please enter both Supabase URL and API Key');
+      return;
+    }
+
+    setDbLoading(true);
+    try {
+      // Test connection by making a simple request
+      const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=count`, {
+        headers: {
+          'apikey': supabaseConfig.anonKey,
+          'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        setDbConnected(true);
+        localStorage.setItem('supabase-config', JSON.stringify(supabaseConfig));
+        await loadDataFromDatabase();
+        alert('Successfully connected to database!');
+      } else {
+        throw new Error(`Connection failed: ${response.status}`);
+      }
+    } catch (error) {
+      alert(`Database connection failed: ${error.message}`);
+      console.error('Database connection error:', error);
+    } finally {
+      setDbLoading(false);
+    }
+  };
+
+  const loadDataFromDatabase = async () => {
+    if (!dbConnected || !supabaseConfig.url || !supabaseConfig.anonKey) return;
+
+    try {
+      const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=*`, {
+        headers: {
+          'apikey': supabaseConfig.anonKey,
+          'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const formattedData = data.map(item => ({
+          title: item.title || '',
+          synopsis: item.synopsis || '',
+          genres: item.genres || [],
+          categories: item.categories || [],
+          authors: item.authors || [],
+          year_released: item.year_released || '',
+          chapters: item.chapters || '',
+          status: item.status || '',
+          rating: item.rating || '',
+          thumbnail: item.thumbnail || ''
+        }));
+        setManhwaData(formattedData);
+      }
+    } catch (error) {
+      console.error('Error loading data from database:', error);
+    }
+  };
+
+  const saveToDatabase = async (dataToSave = null) => {
+    if (!dbConnected || !supabaseConfig.url || !supabaseConfig.anonKey) {
+      alert('Please connect to database first');
+      return;
+    }
+
+    const dataForSave = dataToSave || manhwaData;
+    if (dataForSave.length === 0) {
+      alert('No data to save');
+      return;
+    }
+
+    setDbLoading(true);
+    try {
+      // Clear existing data first (only in admin mode)
+      if (adminMode) {
+        await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
+          method: 'DELETE',
+          headers: {
+            'apikey': supabaseConfig.anonKey,
+            'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+      }
+
+      // Insert new data in batches
+      const batchSize = 100;
+      for (let i = 0; i < dataForSave.length; i += batchSize) {
+        const batch = dataForSave.slice(i, i + batchSize);
+        
+        const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
+          method: 'POST',
+          headers: {
+            'apikey': supabaseConfig.anonKey,
+            'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(batch)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to save batch ${Math.floor(i/batchSize) + 1}`);
+        }
+      }
+
+      alert(`Successfully saved ${dataForSave.length} manhwa entries to database!`);
+    } catch (error) {
+      alert(`Error saving to database: ${error.message}`);
+      console.error('Database save error:', error);
+    } finally {
+      setDbLoading(false);
+    }
+  };
+
+  const disconnectDatabase = () => {
+    setDbConnected(false);
+    setSupabaseConfig({ url: '', anonKey: '' });
+    localStorage.removeItem('supabase-config');
+    setShowDbConfig(false);
+  };
 
   const loadSampleData = () => {
     const sampleData = [
@@ -396,6 +685,63 @@ const ManhwaDatabase = () => {
         </div>
       )}
 
+      {/* Admin Login Modal */}
+      {showAdminLogin && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-8 md:items-center md:pt-4 overflow-y-auto">
+          <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-600 my-auto">
+            <div className="text-center mb-6">
+              <User size={48} className="text-blue-400 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-white mb-2">Admin Login</h2>
+              <p className="text-gray-300 text-sm">Access database management features</p>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-white text-sm font-medium mb-2">Username</label>
+                <input
+                  type="text"
+                  value={adminCredentials.username}
+                  onChange={(e) => setAdminCredentials(prev => ({ ...prev, username: e.target.value }))}
+                  className="w-full px-3 py-3 bg-slate-700 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 text-base"
+                  placeholder="Enter admin username"
+                  autoComplete="username"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-white text-sm font-medium mb-2">Password</label>
+                <input
+                  type="text"
+                  value={adminCredentials.password}
+                  onChange={(e) => setAdminCredentials(prev => ({ ...prev, password: e.target.value }))}
+                  className="w-full px-3 py-3 bg-slate-700 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 text-base"
+                  placeholder="Enter admin password"
+                  autoComplete="current-password"
+                  onKeyPress={(e) => e.key === 'Enter' && adminLogin()}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={adminLogin}
+                disabled={adminLoading}
+                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base"
+              >
+                {adminLoading ? 'Logging in...' : 'Login'}
+              </button>
+              
+              <button
+                onClick={() => setShowAdminLogin(false)}
+                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-500 transition-colors text-base"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-slate-900/90 backdrop-blur-sm text-white p-4 shadow-lg border-b border-slate-700">
         <div className="max-w-6xl mx-auto">
@@ -406,6 +752,31 @@ const ManhwaDatabase = () => {
             </div>
             
             <div className="flex items-center gap-4">
+              {/* Admin Mode Indicator */}
+              {betaMode && adminMode && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-yellow-600/20 border border-yellow-500 rounded-lg">
+                  <Shield size={16} className="text-yellow-400" />
+                  <span className="text-yellow-400 text-sm font-medium">Admin Mode</span>
+                </div>
+              )}
+
+              {/* Database Status - Beta Feature */}
+              {betaMode && (
+                <div className="flex items-center gap-2">
+                  {dbConnected ? (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-green-600/20 border border-green-500 rounded-lg">
+                      <Wifi size={16} className="text-green-400" />
+                      <span className="text-green-400 text-sm font-medium">DB Connected</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-red-600/20 border border-red-500 rounded-lg">
+                      <WifiOff size={16} className="text-red-400" />
+                      <span className="text-red-400 text-sm font-medium">DB Offline</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Beta Mode Toggle */}
               <button
                 onClick={() => setBetaMode(!betaMode)}
@@ -428,6 +799,30 @@ const ManhwaDatabase = () => {
                   </>
                 )}
               </button>
+
+              {/* Admin Login/Logout - Beta Feature */}
+              {betaMode && (
+                <button
+                  onClick={() => adminMode ? adminLogout() : setShowAdminLogin(true)}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors text-sm ${
+                    adminMode 
+                      ? 'bg-red-600 text-white hover:bg-red-500' 
+                      : 'bg-blue-600 text-white hover:bg-blue-500'
+                  }`}
+                >
+                  {adminMode ? (
+                    <>
+                      <Unlock size={16} />
+                      Logout
+                    </>
+                  ) : (
+                    <>
+                      <Lock size={16} />
+                      Admin
+                    </>
+                  )}
+                </button>
+              )}
               
               <div className="text-gray-300 text-sm bg-black/20 px-3 py-2 rounded-lg border border-gray-600">
                 📚 {manhwaData.length} titles
@@ -438,7 +833,147 @@ const ManhwaDatabase = () => {
       </header>
 
       <div className="max-w-6xl mx-auto p-4 md:p-6">
-        {/* File Upload Section */}
+        {/* Admin File Upload Section - Beta Feature */}
+        {betaMode && adminMode && (
+          <div className="bg-gradient-to-br from-yellow-800/90 to-orange-900/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border-2 border-yellow-500">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                  <Shield size={20} className="text-yellow-400" />
+                  Admin: Direct Database Upload
+                </h3>
+                <p className="text-sm text-yellow-200">
+                  Upload CSV files directly to the database. This will replace all existing data.
+                </p>
+              </div>
+            </div>
+            
+            <div className="border-2 border-dashed rounded-xl p-6 md:p-8 text-center transition-all duration-300 border-yellow-400 hover:border-yellow-300 hover:bg-yellow-400/5">
+              <Shield size={32} className="text-yellow-400 mx-auto mb-4" />
+              <p className="text-yellow-200 mb-4 font-medium">
+                Admin Upload: CSV → Database (Direct)
+              </p>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={(e) => handleAdminFileUpload(e.target.files[0])}
+                className="hidden"
+                id="admin-file-upload"
+              />
+              <label
+                htmlFor="admin-file-upload"
+                className="inline-block px-6 py-3 bg-yellow-600 text-white rounded-lg cursor-pointer hover:bg-yellow-500 transition-colors font-medium"
+              >
+                Upload to Database
+              </label>
+              <p className="text-sm text-yellow-300 mt-3">
+                ⚠️ This will replace ALL existing database records
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Database Configuration - Beta Feature */}
+        {betaMode && (
+          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-blue-600">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                  <Database size={20} className="text-blue-400" />
+                  Database Connection (Beta)
+                </h3>
+                <p className="text-sm text-gray-300">
+                  Connect to your Supabase database to sync and store your manhwa collection online.
+                </p>
+              </div>
+              
+              <button
+                onClick={() => setShowDbConfig(!showDbConfig)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors text-sm"
+              >
+                {showDbConfig ? 'Hide Config' : 'Show Config'}
+              </button>
+            </div>
+
+            {showDbConfig && (
+              <div className="space-y-4 p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+                <div>
+                  <label className="block text-white text-sm font-medium mb-2">
+                    Supabase Project URL
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://your-project.supabase.co"
+                    value={supabaseConfig.url}
+                    onChange={(e) => setSupabaseConfig(prev => ({ ...prev, url: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-white text-sm font-medium mb-2">
+                    Supabase Anon Key
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI..."
+                    value={supabaseConfig.anonKey}
+                    onChange={(e) => setSupabaseConfig(prev => ({ ...prev, anonKey: e.target.value }))}
+                    className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+                
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={connectToDatabase}
+                    disabled={dbLoading}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {dbLoading ? 'Connecting...' : 'Connect'}
+                  </button>
+                  
+                  {dbConnected && (
+                    <>
+                      <button
+                        onClick={saveToDatabase}
+                        disabled={dbLoading}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        <Save size={16} />
+                        {dbLoading ? 'Saving...' : 'Save to DB'}
+                      </button>
+                      
+                      <button
+                        onClick={loadDataFromDatabase}
+                        disabled={dbLoading}
+                        className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        <Download size={16} />
+                        Load from DB
+                      </button>
+                      
+                      <button
+                        onClick={disconnectDatabase}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-500 transition-colors flex items-center gap-2"
+                      >
+                        <X size={16} />
+                        Disconnect
+                      </button>
+                    </>
+                  )}
+                </div>
+                
+                <div className="text-xs text-gray-400 p-3 bg-slate-800/50 rounded border border-slate-600">
+                  <strong>Setup Instructions:</strong><br/>
+                  1. Create a Supabase project at <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">supabase.com</a><br/>
+                  2. Copy your project URL and anon key from Settings → API<br/>
+                  3. Run the provided SQL script in the SQL Editor<br/>
+                  4. Enter your credentials above and click Connect
+                </div>
+              </div>
+            )}
+          </div>
+        )}
         {showUploadSection && (
           <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-slate-600">
             <div className="flex justify-between items-start mb-4">
