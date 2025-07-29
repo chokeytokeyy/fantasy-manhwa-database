@@ -285,69 +285,41 @@ const ManhwaDatabase = () => {
   if (isLoading) {
     return (
       
-
         
-
           
-          
-Processing CSV File...
-
-          
-Please wait while we load your manhwa data
-
-
+          Processing CSV File...
+          Please wait while we load your manhwa data
         
-
       
-
     );
   }
 
   return (
     
-
       {/* Welcome Modal */}
       {showWelcomeModal && (
         
-
           
-
             
-
               
+              Welcome to Fantasy Manhwa Archive!
+            
+            
+            
               
-Welcome to Fantasy Manhwa Archive!
-
-            
-
-            
-            
-
-              
-
                 ⚠️ Important Notice: This website is in its very early stages, so please understand that it's still under development.
               
-
-
               
               
-
                 📂 Data Upload Required: To use this database, you need to upload the manhwa data file yourself. The website doesn't come pre-loaded with data.
               
-
-
               
               
-
                 💾 Download the Data: Click the link below to download the latest manhwa database file, then upload it using the file upload section.
               
-
-
             
 
-
             
-
               
                 📥 Download Manhwa Database (MEGA)
               
@@ -358,79 +330,51 @@ Welcome to Fantasy Manhwa Archive!
                 Got it, let's start!
               
             
-
           
-
         
-
       )}
 
       {/* Header */}
       
-
         
-
           
-
             
             
-
               ⚔️ Fantasy Manhwa Archive ⚔️
             
-
-          
-
           
           
-
+          
             📖 {manhwaData.length} titles loaded
           
-
         
-
       
 
-
       
-
         {/* File Upload Section */}
         
-
           
-
             
-
               
-
                 
                 Upload Manhwa Database
               
-
               
-
                 First, download the data file, then upload it here to load the manhwa database.
               
-
-
             
-
             
             
               📥 Download Data
             
           
-
           
           
-
             
             
-
               Drag and drop your CSV file here, or click to browse
             
-
-
-            No file chosen handleFileUpload(e.target.files[0])}
+             handleFileUpload(e.target.files[0])}
               className="hidden"
               id="file-upload"
             />
@@ -438,34 +382,22 @@ Welcome to Fantasy Manhwa Archive!
               Choose CSV File
             
             
-
               CSV files only • Data will be stored locally in your browser
             
-
-
           
-
         
-
 
         {/* Search and Filters */}
         
-
           
-
             
-
-            
-{searchTerm}
- setSearchTerm(e.target.value)}
+             setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 border-2 border-amber-300 rounded-lg text-base focus:outline-none focus:border-amber-500"
             />
           
 
-
           {/* Filter Toggle */}
           
-
              setShowFilters(!showFilters)}
               className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
             >
@@ -481,169 +413,99 @@ Welcome to Fantasy Manhwa Archive!
             )}
           
 
-
           {/* Filters */}
           {showFilters && (
             
-
               {/* Genres */}
               
-
+                📚 Genres
                 
-📚 Genres
-
-                
-
-                  {getUniqueValues('genres').map(genre => (
-                     toggleFilter('genres', genre)}
-                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                        selectedFilters.genres.includes(genre)
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
-                      }`}
-                    >
+                  {manhwa.genres && manhwa.genres.map((genre, i) => (
+                    
                       {genre}
                     
                   ))}
                 
-
-              
-
-
-              {/* Categories */}
-              
-
                 
-🏷️ Categories
-
-                
-
-                  {getUniqueValues('categories').map(category => (
-                     toggleFilter('categories', category)}
-                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                        selectedFilters.categories.includes(category)
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
-                      }`}
-                    >
-                      {category}
+                {/* Categories */}
+                {manhwa.categories && manhwa.categories.length > 0 && (
+                  <>
+                    🏷️ Categories
                     
-                  ))}
-                
-
-              
-
-
-              {/* Rating */}
-              
-
-                
-⭐ Rating
-
-                
-
-                  {getUniqueValues('rating').map(rating => (
-                     toggleFilter('rating', rating)}
-                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                        selectedFilters.rating.includes(rating)
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
-                      }`}
-                    >
-                      {rating}
-                    
-                  ))}
-                
-
-              
-
-
-              {/* Chapters */}
-              
-
-                
-📖 Chapters
-
-                
-
-                  {getUniqueValues('chapters').map(chapters => (
-                     toggleFilter('chapters', chapters)}
-                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                        selectedFilters.chapters.includes(chapters)
-                          ? 'bg-amber-600 text-white border-amber-600'
-                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
-                      }`}
-                    >
-                      {chapters}
-                    
-                  ))}
-                
-
-              
-
-            
-
-          )}
-          
-          
-
-            📖 Found {filteredData.length} manhwa titles
-          
-
-
-        
-
-
-        {/* Manhwa Grid */}
-        
-
-          {filteredData.map((manhwa, index) => (
-            
-
-              {/* Title and Rating */}
-              
-
-                
-
-                  {manhwa.title}
-                
-
-                
-
-                  
-                  {manhwa.rating}
-                
-
-              
-
-
-              {/* Synopsis */}
-              
-
-                {(() => {
-                  const isExpanded = expandedDescriptions.has(index);
-                  const { text: truncatedText, needsTruncation } = truncateText(manhwa.synopsis);
-                  const displayText = isExpanded ? manhwa.synopsis : truncatedText;
-                  
-                  return (
-                    <>
-                      
-
-                        {displayText}
-                      
-
-
-                      {needsTruncation && (
-                         toggleDescription(index)}
-                          className="mt-2 text-amber-600 hover:text-amber-800 text-sm font-medium transition-colors"
-                        >
-                          {isExpanded ? '▲ Show Less' : '▼ Read More'}
+                      {manhwa.categories.map((category, i) => (
                         
-                      )}
+                          {category}
+                        
+                      ))}
                     
-                  );
-                })()}
+                  
+                )}
               
 
+              {/* Details */}
+              
+                {manhwa.authors && manhwa.authors.length > 0 && (
+                  
+                    
+                    {manhwa.authors.join(', ')}
+                  
+                )}
+                
+                
+                  
+                    
+                    {manhwa.year_released}
+                  
+                  
+                    
+                    {manhwa.chapters}
+                  
+                
 
-              {/* Genres */}
+                
+                  {manhwa.status}
+                
+              
+
+              {/* Read Button */}
+              
+                🔗 Link Coming Soon
+              
+            
+          ))}
+        
+
+        {/* No Results */}
+        {filteredData.length === 0 && (
+          
+            
+            
+              No manhwa found
+            
+            Try adjusting your search or filters
+          
+        )}
+
+        {/* Tribute Section */}
+        
+          
+            ⚔️ Tribute to the Original Archive ⚔️
+          
+          
+            This database is inspired by the amazing community-driven manhwa spreadsheet
+          
+          
+            
+              📱 Reddit Thread
+            
+            
+              📊 Google Sheet
+            
+          
+        
+      
+    
+  );
+};
+
+export default ManhwaDatabase;
