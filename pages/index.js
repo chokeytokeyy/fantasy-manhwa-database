@@ -257,12 +257,12 @@ const ManhwaDatabase = () => {
       (manhwa.genres && manhwa.genres.some(g => g.toLowerCase().includes(searchTerm.toLowerCase()))) ||
       (manhwa.authors && manhwa.authors.some(a => a.toLowerCase().includes(searchTerm.toLowerCase())));
 
-    // Apply filters
+    // Apply filters - Changed to AND logic
     const genreMatch = selectedFilters.genres.length === 0 || 
-      (manhwa.genres && selectedFilters.genres.some(genre => manhwa.genres.includes(genre)));
+      (manhwa.genres && selectedFilters.genres.every(genre => manhwa.genres.includes(genre)));
     
     const categoryMatch = selectedFilters.categories.length === 0 || 
-      (manhwa.categories && selectedFilters.categories.some(category => manhwa.categories.includes(category)));
+      (manhwa.categories && selectedFilters.categories.every(category => manhwa.categories.includes(category)));
     
     const ratingMatch = selectedFilters.rating.length === 0 || 
       selectedFilters.rating.includes(manhwa.rating);
