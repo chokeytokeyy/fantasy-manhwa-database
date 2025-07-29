@@ -507,11 +507,14 @@ const ManhwaDatabase = () => {
   };
 
   const loadDataFromDatabase = async () => {
-    if (!dbConnected || !supabaseConfig.url || !supabaseConfig.anonKey) return;
+    if (!dbConnected || !supabaseConfig.url || !supabaseConfig.anonKey) {
+      console.log('Cannot load from database - not connected');
+      return;
+    }
 
+    console.log('Loading data from database...');
     setDbLoading(true);
     try {
-      console.log('Loading data from database...');
       const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=*`, {
         headers: {
           'apikey': supabaseConfig.anonKey,
@@ -520,31 +523,51 @@ const ManhwaDatabase = () => {
         }
       });
 
+      console.log('Database fetch response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
-        console.log(`Loaded ${data.length} records from database`);
+        console.log(`Fetched ${data.length} records from database`);
         
-        const formattedData = data.map(item => ({
-          title: item.title || '',
-          synopsis: item.synopsis || '',
-          genres: item.genres || [],
-          categories: item.categories || [],
-          authors: item.authors || [],
-          year_released: item.year_released || '',
-          chapters: item.chapters || '',
-          status: item.status || '',
-          rating: item.rating || '',
-          thumbnail: item.thumbnail || ''
-        }));
-        
-        const uniqueData = removeDuplicates(formattedData, 'title');
-        setManhwaData(uniqueData);
-        console.log(`Set ${uniqueData.length} unique records in app state`);
+        if (data.length > 0) {
+          console.log('Sample record structure:', data[0]);
+          
+          const formattedData = data.map((item, index) => {
+            try {
+              return {
+                title: item.title || '',
+                synopsis: item.synopsis || '',
+                genres: Array.isArray(item.genres) ? item.genres : (item.genres ? [item.genres] : []),
+                categories: Array.isArray(item.categories) ? item.categories : (item.categories ? [item.categories] : []),
+                authors: Array.isArray(item.authors) ? item.authors : (item.authors ? [item.authors] : []),
+                year_released: item.year_released || '',
+                chapters: item.chapters || '',
+                status: item.status || '',
+                rating: item.rating || '',
+                thumbnail: item.thumbnail || ''
+              };
+            } catch (error) {
+              console.error(`Error formatting record ${index}:`, error, item);
+              return null;
+            }
+          }).filter(item => item !== null);
+          
+          const uniqueData = removeDuplicates(formattedData, 'title');
+          console.log(`Setting ${uniqueData.length} unique records in state`);
+          setManhwaData(uniqueData);
+          console.log('✅ Database data loaded and set in state successfully!');
+        } else {
+          console.log('Database returned empty result');
+          loadSampleData();
+        }
       } else {
-        console.error('Failed to load data from database:', response.status);
+        const errorText = await response.text();
+        console.error('Failed to load data from database:', response.status, errorText);
+        loadSampleData();
       }
     } catch (error) {
       console.error('Error loading data from database:', error);
+      loadSampleData();
     } finally {
       setDbLoading(false);
     }
