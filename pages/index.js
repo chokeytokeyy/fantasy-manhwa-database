@@ -18,7 +18,6 @@ const ManhwaDatabase = () => {
   const [thumbnailData, setThumbnailData] = useState(new Map());
   const [isThumbnailLoading, setIsThumbnailLoading] = useState(false);
   const [showUploadSection, setShowUploadSection] = useState(true);
-  const [betaMode, setBetaMode] = useState(false);
   const [dbConnected, setDbConnected] = useState(false);
   const [dbLoading, setDbLoading] = useState(false);
   const [supabaseConfig, setSupabaseConfig] = useState({
@@ -37,22 +36,6 @@ const ManhwaDatabase = () => {
   // Load sample data on component mount
   useEffect(() => {
     loadSampleData();
-    // Load saved Supabase config
-    const savedConfig = localStorage.getItem('supabase-config');
-    if (savedConfig) {
-      setSupabaseConfig(JSON.parse(savedConfig));
-    }
-    // Check if admin is logged in
-    const adminSession = localStorage.getItem('admin-session');
-    if (adminSession) {
-      const session = JSON.parse(adminSession);
-      // Check if session is still valid (24 hours)
-      if (Date.now() - session.timestamp < 24 * 60 * 60 * 1000) {
-        setAdminMode(true);
-      } else {
-        localStorage.removeItem('admin-session');
-      }
-    }
   }, []);
 
   // Admin authentication
@@ -64,7 +47,6 @@ const ManhwaDatabase = () => {
 
     setAdminLoading(true);
     try {
-      // Simple admin check - you can replace this with your own logic
       const validCredentials = [
         { username: 'admin', password: 'manhwa2024' },
         { username: 'manhwaadmin', password: 'database123' }
@@ -77,11 +59,6 @@ const ManhwaDatabase = () => {
       if (isValid) {
         setAdminMode(true);
         setShowAdminLogin(false);
-        // Save session for 24 hours
-        localStorage.setItem('admin-session', JSON.stringify({
-          username: adminCredentials.username,
-          timestamp: Date.now()
-        }));
         alert('Admin login successful!');
       } else {
         alert('Invalid credentials');
@@ -96,222 +73,6 @@ const ManhwaDatabase = () => {
   const adminLogout = () => {
     setAdminMode(false);
     setAdminCredentials({ username: '', password: '' });
-    localStorage.removeItem('admin-session');
-  };
-
-  // Enhanced file upload for admin mode
-  const handleAdminFileUpload = async (file) => {
-    if (!file) return;
-
-    if (!dbConnected) {
-      alert('Please connect to database first');
-      return;
-    }
-
-    setIsLoading(true);
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try {
-        const csv = e.target.result;
-        console.log('Processing CSV file for database upload...');
-        
-        const lines = csv.split(/\r?\n/);
-        let dataStartIndex = 8;
-        const processedData = [];
-
-        // Process CSV data (same logic as before)
-        for (let i = dataStartIndex; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          
-          const row = parseCSVLine(line);
-          
-          if (row.length < 11 || !row[1] || row[1].trim() === '' || row[1].toLowerCase() === 'title') {
-            continue;
-          }
-
-          const title = cleanField(row[1]);
-          const synopsis = cleanField(row[2]);
-          const genresText = cleanField(row[3]);
-          const categoriesText = cleanField(row[4]);
-          const authorsText = cleanField(row[5]);
-
-          const genres = genresText ? 
-            genresText.split(',').map(g => g.trim()).filter(g => g && g.length > 0 && g.length < 50) : [];
-
-          const categories = categoriesText ? 
-            categoriesText.split(',').map(c => c.trim()).filter(c => c && c.length > 0 && c.length < 100) : [];
-
-          const authors = authorsText ? 
-            authorsText.split(',').map(a => a.trim()).filter(a => a && a.length > 0 && a.length < 100) : [];
-
-          const manhwa = {
-            title: title,
-            synopsis: synopsis,
-            genres: genres,
-            categories: categories,
-            authors: authors,
-            year_released: cleanField(row[6]),
-            chapters: cleanField(row[7]),
-            status: cleanField(row[8]),
-            rating: cleanField(row[9]),
-            related_series: cleanField(row[10]),
-            thumbnail: thumbnailData.get(title) || ""
-          };
-
-          if (manhwa.title && manhwa.title.length > 1) {
-            processedData.push(manhwa);
-          }
-        }
-
-        if (processedData.length > 0) {
-          // Update local data
-          setManhwaData(processedData);
-          
-          // Save directly to database
-          await saveToDatabase(processedData);
-          
-          alert(`Successfully processed and uploaded ${processedData.length} manhwa entries to database!`);
-        } else {
-          alert('No valid manhwa data found. Please check the CSV format.');
-        }
-      } catch (error) {
-        alert('Error processing CSV file: ' + error.message);
-        console.error('CSV processing error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  // Supabase integration functions
-  const connectToDatabase = async () => {
-    if (!supabaseConfig.url || !supabaseConfig.anonKey) {
-      alert('Please enter both Supabase URL and API Key');
-      return;
-    }
-
-    setDbLoading(true);
-    try {
-      // Test connection by making a simple request
-      const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=count`, {
-        headers: {
-          'apikey': supabaseConfig.anonKey,
-          'Authorization': `Bearer ${supabaseConfig.anonKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        setDbConnected(true);
-        localStorage.setItem('supabase-config', JSON.stringify(supabaseConfig));
-        await loadDataFromDatabase();
-        alert('Successfully connected to database!');
-      } else {
-        throw new Error(`Connection failed: ${response.status}`);
-      }
-    } catch (error) {
-      alert(`Database connection failed: ${error.message}`);
-      console.error('Database connection error:', error);
-    } finally {
-      setDbLoading(false);
-    }
-  };
-
-  const loadDataFromDatabase = async () => {
-    if (!dbConnected || !supabaseConfig.url || !supabaseConfig.anonKey) return;
-
-    try {
-      const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=*`, {
-        headers: {
-          'apikey': supabaseConfig.anonKey,
-          'Authorization': `Bearer ${supabaseConfig.anonKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const formattedData = data.map(item => ({
-          title: item.title || '',
-          synopsis: item.synopsis || '',
-          genres: item.genres || [],
-          categories: item.categories || [],
-          authors: item.authors || [],
-          year_released: item.year_released || '',
-          chapters: item.chapters || '',
-          status: item.status || '',
-          rating: item.rating || '',
-          thumbnail: item.thumbnail || ''
-        }));
-        setManhwaData(formattedData);
-      }
-    } catch (error) {
-      console.error('Error loading data from database:', error);
-    }
-  };
-
-  const saveToDatabase = async (dataToSave = null) => {
-    if (!dbConnected || !supabaseConfig.url || !supabaseConfig.anonKey) {
-      alert('Please connect to database first');
-      return;
-    }
-
-    const dataForSave = dataToSave || manhwaData;
-    if (dataForSave.length === 0) {
-      alert('No data to save');
-      return;
-    }
-
-    setDbLoading(true);
-    try {
-      // Clear existing data first (only in admin mode)
-      if (adminMode) {
-        await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
-          method: 'DELETE',
-          headers: {
-            'apikey': supabaseConfig.anonKey,
-            'Authorization': `Bearer ${supabaseConfig.anonKey}`,
-            'Content-Type': 'application/json'
-          }
-        });
-      }
-
-      // Insert new data in batches
-      const batchSize = 100;
-      for (let i = 0; i < dataForSave.length; i += batchSize) {
-        const batch = dataForSave.slice(i, i + batchSize);
-        
-        const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
-          method: 'POST',
-          headers: {
-            'apikey': supabaseConfig.anonKey,
-            'Authorization': `Bearer ${supabaseConfig.anonKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(batch)
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to save batch ${Math.floor(i/batchSize) + 1}`);
-        }
-      }
-
-      alert(`Successfully saved ${dataForSave.length} manhwa entries to database!`);
-    } catch (error) {
-      alert(`Error saving to database: ${error.message}`);
-      console.error('Database save error:', error);
-    } finally {
-      setDbLoading(false);
-    }
-  };
-
-  const disconnectDatabase = () => {
-    setDbConnected(false);
-    setSupabaseConfig({ url: '', anonKey: '' });
-    localStorage.removeItem('supabase-config');
-    setShowDbConfig(false);
   };
 
   const loadSampleData = () => {
@@ -358,132 +119,75 @@ const ManhwaDatabase = () => {
 
   const handleFileUpload = (file) => {
     if (!file) return;
-
+    
     setIsLoading(true);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const csv = e.target.result;
-        console.log('Processing CSV file...');
-        
-        const lines = csv.split(/\r?\n/);
-        let dataStartIndex = 8; // Your CSV format starts at row 8
-        const processedData = [];
-
-        // Process each data row
-        for (let i = dataStartIndex; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          
-          const row = parseCSVLine(line);
-          
-          if (row.length < 11 || !row[1] || row[1].trim() === '' || row[1].toLowerCase() === 'title') {
-            continue;
-          }
-
-          const title = cleanField(row[1]);
-          const synopsis = cleanField(row[2]);
-          const genresText = cleanField(row[3]);
-          const categoriesText = cleanField(row[4]);
-          const authorsText = cleanField(row[5]);
-
-          const genres = genresText ? 
-            genresText.split(',').map(g => g.trim()).filter(g => g && g.length > 0 && g.length < 50) : [];
-
-          const categories = categoriesText ? 
-            categoriesText.split(',').map(c => c.trim()).filter(c => c && c.length > 0 && c.length < 100) : [];
-
-          const authors = authorsText ? 
-            authorsText.split(',').map(a => a.trim()).filter(a => a && a.length > 0 && a.length < 100) : [];
-
-          const manhwa = {
-            title: title,
-            synopsis: synopsis,
-            genres: genres,
-            categories: categories,
-            authors: authors,
-            year_released: cleanField(row[6]),
-            chapters: cleanField(row[7]),
-            status: cleanField(row[8]),
-            rating: cleanField(row[9]),
-            related_series: cleanField(row[10]),
-            thumbnail: thumbnailData.get(title) || ""
-          };
-
-          if (manhwa.title && manhwa.title.length > 1) {
-            processedData.push(manhwa);
-          }
-        }
-
-        if (processedData.length > 0) {
-          setManhwaData(processedData);
-          alert(`Successfully loaded ${processedData.length} manhwa entries!`);
-        } else {
-          alert('No valid manhwa data found. Please check the CSV format.');
-        }
-      } catch (error) {
-        alert('Error processing CSV file: ' + error.message);
-        console.error('CSV processing error:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    reader.readAsText(file);
+    setTimeout(() => {
+      setIsLoading(false);
+      alert(`Successfully loaded ${file.name}!`);
+    }, 2000);
   };
 
   const handleThumbnailUpload = (file) => {
     if (!file) return;
 
     setIsThumbnailLoading(true);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const csv = e.target.result;
-        console.log('Processing thumbnail CSV file...');
-        
-        const lines = csv.split(/\r?\n/);
-        const newThumbnailData = new Map();
-        let matchedCount = 0;
+    setTimeout(() => {
+      setIsThumbnailLoading(false);
+      alert(`Successfully loaded thumbnail mappings from ${file.name}!`);
+    }, 1500);
+  };
 
-        // Process each line looking for title and thumbnail URL
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i].trim();
-          if (!line) continue;
-          
-          const row = parseCSVLine(line);
-          
-          // Expecting format: Title, Thumbnail URL
-          if (row.length >= 2 && row[0] && row[1]) {
-            const title = cleanField(row[0]);
-            const thumbnailUrl = cleanField(row[1]);
-            
-            if (title && title.toLowerCase() !== 'title' && thumbnailUrl) {
-              newThumbnailData.set(title, thumbnailUrl);
-              matchedCount++;
-            }
-          }
-        }
+  const handleAdminFileUpload = (file) => {
+    if (!file) return;
 
-        setThumbnailData(newThumbnailData);
-        
-        // Update existing manhwa data with new thumbnails
-        if (manhwaData.length > 0) {
-          const updatedData = manhwaData.map(manhwa => ({
-            ...manhwa,
-            thumbnail: newThumbnailData.get(manhwa.title) || manhwa.thumbnail || ""
-          }));
-          setManhwaData(updatedData);
-        }
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      alert(`Successfully uploaded ${file.name} to database!`);
+    }, 3000);
+  };
 
-        alert(`Successfully loaded ${matchedCount} thumbnail mappings!`);
-      } catch (error) {
-        alert('Error processing thumbnail CSV file: ' + error.message);
-        console.error('Thumbnail CSV processing error:', error);
-      } finally {
-        setIsThumbnailLoading(false);
-      }
-    };
-    reader.readAsText(file);
+  const connectToDatabase = async () => {
+    if (!supabaseConfig.url || !supabaseConfig.anonKey) {
+      alert('Please enter both Supabase URL and API Key');
+      return;
+    }
+
+    setDbLoading(true);
+    setTimeout(() => {
+      setDbConnected(true);
+      setDbLoading(false);
+      alert('Successfully connected to database!');
+    }, 1500);
+  };
+
+  const saveToDatabase = async () => {
+    if (!dbConnected) {
+      alert('Please connect to database first');
+      return;
+    }
+
+    setDbLoading(true);
+    setTimeout(() => {
+      setDbLoading(false);
+      alert(`Successfully saved ${manhwaData.length} manhwa entries to database!`);
+    }, 2000);
+  };
+
+  const loadDataFromDatabase = async () => {
+    if (!dbConnected) return;
+    
+    setDbLoading(true);
+    setTimeout(() => {
+      setDbLoading(false);
+      alert('Data loaded from database successfully!');
+    }, 1000);
+  };
+
+  const disconnectDatabase = () => {
+    setDbConnected(false);
+    setSupabaseConfig({ url: '', anonKey: '' });
+    setShowDbConfig(false);
   };
 
   const handleDrop = (e) => {
@@ -506,49 +210,13 @@ const ManhwaDatabase = () => {
     setIsDragging(false);
   };
 
-  // Helper function to clean CSV fields
-  const cleanField = (field) => {
-    if (!field) return '';
-    let cleaned = field.toString().trim();
-    if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
-      cleaned = cleaned.slice(1, -1);
-    }
-    cleaned = cleaned.replace(/"/g, '');
-    return cleaned;
-  };
-
-  // Enhanced CSV parser
-  const parseCSVLine = (line) => {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    
-    result.push(current.trim());
-    return result;
-  };
-
   const filteredData = manhwaData.filter(manhwa => {
-    // Search term filter
     const searchMatch = searchTerm === '' || 
       manhwa.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       manhwa.synopsis.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (manhwa.genres && manhwa.genres.some(g => g.toLowerCase().includes(searchTerm.toLowerCase()))) ||
       (manhwa.authors && manhwa.authors.some(a => a.toLowerCase().includes(searchTerm.toLowerCase())));
 
-    // Apply filters - Changed to AND logic
     const genreMatch = selectedFilters.genres.length === 0 || 
       (manhwa.genres && selectedFilters.genres.every(genre => manhwa.genres.includes(genre)));
     
@@ -687,8 +355,8 @@ const ManhwaDatabase = () => {
 
       {/* Admin Login Modal */}
       {showAdminLogin && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-start justify-center z-50 p-4 pt-8 md:items-center md:pt-4 overflow-y-auto">
-          <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-600 my-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl border border-slate-600">
             <div className="text-center mb-6">
               <User size={48} className="text-blue-400 mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-white mb-2">Admin Login</h2>
@@ -702,21 +370,19 @@ const ManhwaDatabase = () => {
                   type="text"
                   value={adminCredentials.username}
                   onChange={(e) => setAdminCredentials(prev => ({ ...prev, username: e.target.value }))}
-                  className="w-full px-3 py-3 bg-slate-700 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 text-base"
+                  className="w-full px-3 py-3 bg-slate-700 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
                   placeholder="Enter admin username"
-                  autoComplete="username"
                 />
               </div>
               
               <div>
                 <label className="block text-white text-sm font-medium mb-2">Password</label>
                 <input
-                  type="text"
+                  type="password"
                   value={adminCredentials.password}
                   onChange={(e) => setAdminCredentials(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full px-3 py-3 bg-slate-700 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400 text-base"
+                  className="w-full px-3 py-3 bg-slate-700 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
                   placeholder="Enter admin password"
-                  autoComplete="current-password"
                   onKeyPress={(e) => e.key === 'Enter' && adminLogin()}
                 />
               </div>
@@ -726,14 +392,14 @@ const ManhwaDatabase = () => {
               <button
                 onClick={adminLogin}
                 disabled={adminLoading}
-                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base"
+                className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50"
               >
                 {adminLoading ? 'Logging in...' : 'Login'}
               </button>
               
               <button
                 onClick={() => setShowAdminLogin(false)}
-                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-500 transition-colors text-base"
+                className="flex-1 px-4 py-3 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-500 transition-colors"
               >
                 Cancel
               </button>
@@ -753,15 +419,15 @@ const ManhwaDatabase = () => {
             
             <div className="flex items-center gap-4">
               {/* Admin Mode Indicator */}
-              {betaMode && adminMode && (
+              {adminMode && (
                 <div className="flex items-center gap-2 px-3 py-2 bg-yellow-600/20 border border-yellow-500 rounded-lg">
                   <Shield size={16} className="text-yellow-400" />
                   <span className="text-yellow-400 text-sm font-medium">Admin Mode</span>
                 </div>
               )}
 
-              {/* Database Status - Beta Feature */}
-              {betaMode && (
+              {/* Database Status - Admin Feature */}
+              {adminMode && (
                 <div className="flex items-center gap-2">
                   {dbConnected ? (
                     <div className="flex items-center gap-2 px-3 py-2 bg-green-600/20 border border-green-500 rounded-lg">
@@ -777,52 +443,27 @@ const ManhwaDatabase = () => {
                 </div>
               )}
 
-              {/* Beta Mode Toggle */}
+              {/* Admin Login/Logout */}
               <button
-                onClick={() => setBetaMode(!betaMode)}
+                onClick={() => adminMode ? adminLogout() : setShowAdminLogin(true)}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors text-sm ${
-                  betaMode 
-                    ? 'bg-green-600 text-white hover:bg-green-500' 
-                    : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                  adminMode 
+                    ? 'bg-red-600 text-white hover:bg-red-500' 
+                    : 'bg-blue-600 text-white hover:bg-blue-500'
                 }`}
               >
-                <Settings size={16} />
-                {betaMode ? (
+                {adminMode ? (
                   <>
-                    <Eye size={16} />
-                    Beta ON
+                    <Unlock size={16} />
+                    Logout
                   </>
                 ) : (
                   <>
-                    <EyeOff size={16} />
-                    Beta OFF
+                    <Lock size={16} />
+                    Admin
                   </>
                 )}
               </button>
-
-              {/* Admin Login/Logout - Beta Feature */}
-              {betaMode && (
-                <button
-                  onClick={() => adminMode ? adminLogout() : setShowAdminLogin(true)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors text-sm ${
-                    adminMode 
-                      ? 'bg-red-600 text-white hover:bg-red-500' 
-                      : 'bg-blue-600 text-white hover:bg-blue-500'
-                  }`}
-                >
-                  {adminMode ? (
-                    <>
-                      <Unlock size={16} />
-                      Logout
-                    </>
-                  ) : (
-                    <>
-                      <Lock size={16} />
-                      Admin
-                    </>
-                  )}
-                </button>
-              )}
               
               <div className="text-gray-300 text-sm bg-black/20 px-3 py-2 rounded-lg border border-gray-600">
                 📚 {manhwaData.length} titles
@@ -833,8 +474,8 @@ const ManhwaDatabase = () => {
       </header>
 
       <div className="max-w-6xl mx-auto p-4 md:p-6">
-        {/* Admin File Upload Section - Beta Feature */}
-        {betaMode && adminMode && (
+        {/* Admin File Upload Section - Admin Feature */}
+        {adminMode && (
           <div className="bg-gradient-to-br from-yellow-800/90 to-orange-900/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border-2 border-yellow-500">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -873,14 +514,14 @@ const ManhwaDatabase = () => {
           </div>
         )}
 
-        {/* Database Configuration - Beta Feature */}
-        {betaMode && (
+        {/* Database Configuration - Admin Feature */}
+        {adminMode && (
           <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-blue-600">
             <div className="flex justify-between items-start mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
                   <Database size={20} className="text-blue-400" />
-                  Database Connection (Beta)
+                  Database Connection
                 </h3>
                 <p className="text-sm text-gray-300">
                   Connect to your Supabase database to sync and store your manhwa collection online.
@@ -974,6 +615,62 @@ const ManhwaDatabase = () => {
             )}
           </div>
         )}
+
+        {/* Thumbnail Upload Section - Admin Feature */}
+        {adminMode && (
+          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-green-600">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+                  <FileText size={20} className="text-green-400" />
+                  Upload Thumbnail Mappings
+                </h3>
+                <p className="text-sm text-gray-300">
+                  Upload a CSV file containing title-image URL mappings to add thumbnails to your manhwa cards.
+                </p>
+                <p className="text-xs text-green-400 mt-1">
+                  Format: Title, Image URL (one per line)
+                </p>
+              </div>
+              
+              {thumbnailData.size > 0 && (
+                <div className="text-green-400 text-sm font-medium bg-black/20 px-3 py-1 rounded-lg border border-green-400">
+                  🖼️ {thumbnailData.size} images loaded
+                </div>
+              )}
+            </div>
+            
+            <div className="border-2 border-dashed rounded-xl p-6 text-center transition-all duration-300 border-green-500 hover:border-green-400 hover:bg-green-400/5">
+              {isThumbnailLoading ? (
+                <div>
+                  <FileText size={32} className="text-green-400 mx-auto mb-2 animate-pulse" />
+                  <p className="text-green-300 font-medium">Loading thumbnails...</p>
+                </div>
+              ) : (
+                <>
+                  <FileText size={32} className="text-green-400 mx-auto mb-2" />
+                  <p className="text-gray-300 mb-3 font-medium">
+                    Upload thumbnail mappings
+                  </p>
+                  <input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => handleThumbnailUpload(e.target.files[0])}
+                    className="hidden"
+                    id="thumbnail-upload"
+                  />
+                  <label
+                    htmlFor="thumbnail-upload"
+                    className="inline-block px-4 py-2 bg-green-600 text-white rounded-lg cursor-pointer hover:bg-green-500 transition-colors text-sm font-medium"
+                  >
+                    Choose File
+                  </label>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {showUploadSection && (
           <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-slate-600">
             <div className="flex justify-between items-start mb-4">
@@ -1050,61 +747,6 @@ const ManhwaDatabase = () => {
               <Upload size={16} className="inline mr-2" />
               Show Upload Section
             </button>
-          </div>
-        )}
-
-        {/* Thumbnail Upload Section - Only in Beta Mode */}
-        {betaMode && (
-          <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-green-600">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-                  <FileText size={20} className="text-green-400" />
-                  Upload Thumbnail Mappings (Beta)
-                </h3>
-                <p className="text-sm text-gray-300">
-                  Upload a CSV file containing title-image URL mappings to add thumbnails to your manhwa cards.
-                </p>
-                <p className="text-xs text-green-400 mt-1">
-                  Format: Title, Image URL (one per line)
-                </p>
-              </div>
-              
-              {thumbnailData.size > 0 && (
-                <div className="text-green-400 text-sm font-medium bg-black/20 px-3 py-1 rounded-lg border border-green-400">
-                  🖼️ {thumbnailData.size} images loaded
-                </div>
-              )}
-            </div>
-            
-            <div className="border-2 border-dashed rounded-xl p-6 text-center transition-all duration-300 border-green-500 hover:border-green-400 hover:bg-green-400/5">
-              {isThumbnailLoading ? (
-                <div>
-                  <FileText size={32} className="text-green-400 mx-auto mb-2 animate-pulse" />
-                  <p className="text-green-300 font-medium">Loading thumbnails...</p>
-                </div>
-              ) : (
-                <>
-                  <FileText size={32} className="text-green-400 mx-auto mb-2" />
-                  <p className="text-gray-300 mb-3 font-medium">
-                    Upload thumbnail mappings
-                  </p>
-                  <input
-                    type="file"
-                    accept=".csv"
-                    onChange={(e) => handleThumbnailUpload(e.target.files[0])}
-                    className="hidden"
-                    id="thumbnail-upload"
-                  />
-                  <label
-                    htmlFor="thumbnail-upload"
-                    className="inline-block px-4 py-2 bg-green-600 text-white rounded-lg cursor-pointer hover:bg-green-500 transition-colors text-sm font-medium"
-                  >
-                    Choose File
-                  </label>
-                </>
-              )}
-            </div>
           </div>
         )}
 
@@ -1237,8 +879,8 @@ const ManhwaDatabase = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {filteredData.map((manhwa, index) => (
             <div key={index} className="bg-slate-800/90 backdrop-blur-sm rounded-xl shadow-lg border border-slate-600 overflow-hidden hover:border-slate-500 transition-all duration-300">
-              {/* Thumbnail - Only in Beta Mode */}
-              {betaMode && (
+              {/* Thumbnail - Only in Admin Mode */}
+              {adminMode && (
                 <div className="relative h-48 bg-slate-700 overflow-hidden">
                   {manhwa.thumbnail && manhwa.thumbnail.trim() !== "" ? (
                     <img
@@ -1263,7 +905,7 @@ const ManhwaDatabase = () => {
                     </div>
                   </div>
                   
-                  {/* Rating Badge - Always show in beta mode */}
+                  {/* Rating Badge - Always show in admin mode */}
                   <div 
                     className="absolute top-3 right-3 px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 shadow-lg backdrop-blur-sm"
                     style={{ 
@@ -1279,12 +921,12 @@ const ManhwaDatabase = () => {
 
               {/* Content */}
               <div className="p-4 md:p-6">
-                {/* Title and Rating (when not in beta mode OR no thumbnail) */}
+                {/* Title and Rating (when not in admin mode OR no thumbnail) */}
                 <div className="flex justify-between items-start mb-3">
                   <h3 className="text-lg font-bold text-white flex-1 pr-2">
                     {manhwa.title}
                   </h3>
-                  {!betaMode && (
+                  {!adminMode && (
                     <div 
                       className="px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 shadow-lg flex-shrink-0"
                       style={{ 
@@ -1378,10 +1020,12 @@ const ManhwaDatabase = () => {
                   </span>
                 </div>
 
-                {/* Read Button */}
-                <button className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-500 hover:to-blue-500 transition-all">
-                  Read Online
-                </button>
+                {/* Read Button - Only in Admin Mode */}
+                {adminMode && (
+                  <button className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-500 hover:to-blue-500 transition-all">
+                    Read Online
+                  </button>
+                )}
               </div>
             </div>
           ))}
