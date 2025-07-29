@@ -284,227 +284,402 @@ const ManhwaDatabase = () => {
 
   if (isLoading) {
     return (
-      
-        
-          
-          Processing CSV File...
-          Please wait while we load your manhwa data
-        
-      
+      <div className="min-h-screen bg-gradient-to-br from-amber-100 to-orange-200 flex items-center justify-center">
+        <div className="text-center">
+          <BookOpen size={64} className="text-amber-600 mx-auto mb-4 animate-spin" />
+          <h2 className="text-amber-800 text-xl font-semibold mb-2">Processing CSV File...</h2>
+          <p className="text-gray-600">Please wait while we load your manhwa data</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    
+    <div className="min-h-screen bg-gradient-to-br from-amber-100 to-orange-200">
       {/* Welcome Modal */}
       {showWelcomeModal && (
-        
-          
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full shadow-2xl border-2 border-amber-300">
+            <div className="text-center mb-6">
+              <BookOpen size={48} className="text-amber-600 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-amber-800 mb-2">Welcome to Fantasy Manhwa Archive!</h2>
+            </div>
             
+            <div className="text-gray-700 space-y-3 mb-6">
+              <p className="text-sm">
+                ⚠️ <strong>Important Notice:</strong> This website is in its very early stages, so please understand that it's still under development.
+              </p>
               
-              Welcome to Fantasy Manhwa Archive!
-            
-            
-            
+              <p className="text-sm">
+                📂 <strong>Data Upload Required:</strong> To use this database, you need to upload the manhwa data file yourself. The website doesn't come pre-loaded with data.
+              </p>
               
-                ⚠️ Important Notice: This website is in its very early stages, so please understand that it's still under development.
-              
-              
-              
-                📂 Data Upload Required: To use this database, you need to upload the manhwa data file yourself. The website doesn't come pre-loaded with data.
-              
-              
-              
-                💾 Download the Data: Click the link below to download the latest manhwa database file, then upload it using the file upload section.
-              
-            
+              <p className="text-sm">
+                💾 <strong>Download the Data:</strong> Click the link below to download the latest manhwa database file, then upload it using the file upload section.
+              </p>
+            </div>
 
-            
+            <div className="space-y-4">
               
+                href="https://mega.nz/file/8dYBhJQD#RdQRx7ut45tUFNrlPJTqskCCZ9XeNEKWWkb_cnZ1HJ4"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full inline-block text-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all"
+              >
                 📥 Download Manhwa Database (MEGA)
+              </a>
               
-              
-               setShowWelcomeModal(false)}
+              <button
+                onClick={() => setShowWelcomeModal(false)}
                 className="w-full px-6 py-3 bg-amber-600 text-white rounded-lg font-medium hover:bg-amber-700 transition-colors"
               >
                 Got it, let's start!
-              
-            
-          
-        
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Header */}
-      
-        
-          
-            
-            
+      <header className="bg-gradient-to-r from-amber-800 to-orange-600 text-white p-6 shadow-lg">
+        <div className="max-w-6xl mx-auto flex justify-between items-center flex-wrap">
+          <div className="flex items-center gap-3">
+            <BookOpen size={32} className="text-amber-200" />
+            <h1 className="text-3xl font-bold text-amber-100 font-serif">
               ⚔️ Fantasy Manhwa Archive ⚔️
-            
+            </h1>
+          </div>
           
-          
-          
+          <div className="text-amber-200 text-sm">
             📖 {manhwaData.length} titles loaded
-          
-        
-      
+          </div>
+        </div>
+      </header>
 
-      
+      <div className="max-w-6xl mx-auto p-8">
         {/* File Upload Section */}
-        
-          
-            
-              
-                
+        <div className="bg-white rounded-xl p-6 mb-6 shadow-lg border-2 border-amber-200">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-amber-800 mb-2 flex items-center gap-2">
+                <Upload size={20} />
                 Upload Manhwa Database
-              
-              
+              </h3>
+              <p className="text-sm text-gray-600">
                 First, download the data file, then upload it here to load the manhwa database.
-              
+              </p>
+            </div>
             
             
-            
+              href="https://mega.nz/file/8dYBhJQD#RdQRx7ut45tUFNrlPJTqskCCZ9XeNEKWWkb_cnZ1HJ4"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all text-sm whitespace-nowrap"
+            >
               📥 Download Data
-            
+            </a>
+          </div>
           
-          
-          
-            
-            
+          <div
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
+              isDragging 
+                ? 'border-amber-500 bg-amber-50' 
+                : 'border-amber-300 hover:border-amber-400 hover:bg-amber-50'
+            }`}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+          >
+            <FileText size={48} className="text-amber-500 mx-auto mb-4" />
+            <p className="text-gray-700 mb-4">
               Drag and drop your CSV file here, or click to browse
-            
-             handleFileUpload(e.target.files[0])}
+            </p>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => handleFileUpload(e.target.files[0])}
               className="hidden"
               id="file-upload"
             />
-            
+            <label
+              htmlFor="file-upload"
+              className="inline-block px-6 py-3 bg-amber-600 text-white rounded-lg cursor-pointer hover:bg-amber-700 transition-colors"
+            >
               Choose CSV File
-            
-            
+            </label>
+            <p className="text-sm text-gray-500 mt-2">
               CSV files only • Data will be stored locally in your browser
-            
-          
-        
+            </p>
+          </div>
+        </div>
 
         {/* Search and Filters */}
-        
-          
-            
-             setSearchTerm(e.target.value)}
+        <div className="bg-white rounded-xl p-6 mb-6 shadow-lg border-2 border-amber-200">
+          <div className="relative mb-4">
+            <Search size={20} className="absolute left-3 top-3.5 text-amber-600" />
+            <input
+              type="text"
+              placeholder="🔍 Search by title, synopsis, genre, author..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-12 pr-4 py-3 border-2 border-amber-300 rounded-lg text-base focus:outline-none focus:border-amber-500"
             />
-          
+          </div>
 
           {/* Filter Toggle */}
-          
-             setShowFilters(!showFilters)}
+          <div className="flex justify-between items-center mb-4">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors"
             >
-              
+              <Filter size={16} />
               {showFilters ? 'Hide Filters' : 'Show Filters'}
-            
+            </button>
             
             {Object.values(selectedFilters).some(arr => arr.length > 0) && (
-              
-                
+              <button
+                onClick={clearAllFilters}
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                <X size={16} />
                 Clear All
-              
+              </button>
             )}
-          
+          </div>
 
           {/* Filters */}
           {showFilters && (
-            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 pt-4 border-t border-amber-200">
               {/* Genres */}
-              
-                📚 Genres
-                
-                  {manhwa.genres && manhwa.genres.map((genre, i) => (
-                    
+              <div>
+                <h4 className="font-semibold text-amber-800 mb-2 text-sm">📚 Genres</h4>
+                <div className="flex flex-wrap gap-1">
+                  {getUniqueValues('genres').map(genre => (
+                    <button
+                      key={genre}
+                      onClick={() => toggleFilter('genres', genre)}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFilters.genres.includes(genre)
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                      }`}
+                    >
                       {genre}
-                    
+                    </button>
                   ))}
-                
+                </div>
+              </div>
+
+              {/* Categories */}
+              <div>
+                <h4 className="font-semibold text-amber-800 mb-2 text-sm">🏷️ Categories</h4>
+                <div className="flex flex-wrap gap-1">
+                  {getUniqueValues('categories').map(category => (
+                    <button
+                      key={category}
+                      onClick={() => toggleFilter('categories', category)}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFilters.categories.includes(category)
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                      }`}
+                    >
+                      {category}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Rating */}
+              <div>
+                <h4 className="font-semibold text-amber-800 mb-2 text-sm">⭐ Rating</h4>
+                <div className="flex flex-wrap gap-1">
+                  {getUniqueValues('rating').map(rating => (
+                    <button
+                      key={rating}
+                      onClick={() => toggleFilter('rating', rating)}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFilters.rating.includes(rating)
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                      }`}
+                    >
+                      {rating}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Chapters */}
+              <div>
+                <h4 className="font-semibold text-amber-800 mb-2 text-sm">📖 Chapters</h4>
+                <div className="flex flex-wrap gap-1">
+                  {getUniqueValues('chapters').map(chapters => (
+                    <button
+                      key={chapters}
+                      onClick={() => toggleFilter('chapters', chapters)}
+                      className={`px-2 py-1 text-xs rounded-full border transition-colors ${
+                        selectedFilters.chapters.includes(chapters)
+                          ? 'bg-amber-600 text-white border-amber-600'
+                          : 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200'
+                      }`}
+                    >
+                      {chapters}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          <p className="text-amber-800 font-medium text-lg mt-4">
+            📖 Found {filteredData.length} manhwa titles
+          </p>
+        </div>
+
+        {/* Manhwa Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredData.map((manhwa, index) => (
+            <div key={index} className="bg-white rounded-xl p-6 shadow-lg border-2 border-amber-200">
+              {/* Title and Rating */}
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="text-lg font-bold text-amber-800 flex-1 pr-2">
+                  {manhwa.title}
+                </h3>
+                <div className="flex items-center gap-1" style={{ color: getRatingColor(manhwa.rating) }}>
+                  <Star size={16} fill="currentColor" />
+                  <span className="text-sm font-medium">{manhwa.rating}</span>
+                </div>
+              </div>
+
+              {/* Synopsis */}
+              <div className="mb-4">
+                {(() => {
+                  const isExpanded = expandedDescriptions.has(index);
+                  const { text: truncatedText, needsTruncation } = truncateText(manhwa.synopsis);
+                  const displayText = isExpanded ? manhwa.synopsis : truncatedText;
+                  
+                  return (
+                    <>
+                      <p className="text-gray-700 text-sm leading-relaxed">
+                        {displayText}
+                      </p>
+                      {needsTruncation && (
+                        <button
+                          onClick={() => toggleDescription(index)}
+                          className="mt-2 text-amber-600 hover:text-amber-800 text-sm font-medium transition-colors"
+                        >
+                          {isExpanded ? '▲ Show Less' : '▼ Read More'}
+                        </button>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* Genres */}
+              <div className="mb-3">
+                <div className="text-xs font-semibold text-amber-800 mb-1">📚 Genres</div>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {manhwa.genres && manhwa.genres.map((genre, i) => (
+                    <span key={i} className="px-2 py-1 bg-amber-100 text-amber-800 text-xs rounded-full border border-amber-300">
+                      {genre}
+                    </span>
+                  ))}
+                </div>
                 
                 {/* Categories */}
                 {manhwa.categories && manhwa.categories.length > 0 && (
                   <>
-                    🏷️ Categories
-                    
+                    <div className="text-xs font-semibold text-amber-800 mb-1">🏷️ Categories</div>
+                    <div className="flex flex-wrap gap-1">
                       {manhwa.categories.map((category, i) => (
-                        
+                        <span key={i} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full border border-blue-300">
                           {category}
-                        
+                        </span>
                       ))}
-                    
-                  
+                    </div>
+                  </>
                 )}
-              
+              </div>
 
               {/* Details */}
-              
+              <div className="text-sm text-gray-600 mb-4">
                 {manhwa.authors && manhwa.authors.length > 0 && (
-                  
-                    
-                    {manhwa.authors.join(', ')}
-                  
+                  <div className="flex items-center gap-2 mb-2">
+                    <BookOpen size={14} className="text-amber-600" />
+                    <span>{manhwa.authors.join(', ')}</span>
+                  </div>
                 )}
                 
-                
-                  
-                    
-                    {manhwa.year_released}
-                  
-                  
-                    
-                    {manhwa.chapters}
-                  
-                
+                <div className="flex items-center gap-4 mb-2">
+                  <div className="flex items-center gap-1">
+                    <Calendar size={14} className="text-amber-600" />
+                    <span>{manhwa.year_released}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Hash size={14} className="text-amber-600" />
+                    <span>{manhwa.chapters}</span>
+                  </div>
+                </div>
 
-                
+                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                  manhwa.status === 'Ongoing' ? 'bg-green-100 text-green-800' : 
+                  manhwa.status === 'Complete' ? 'bg-blue-100 text-blue-800' : 
+                  'bg-gray-100 text-gray-800'
+                }`}>
                   {manhwa.status}
-                
-              
+                </span>
+              </div>
 
               {/* Read Button */}
-              
+              <button className="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg font-medium hover:from-amber-700 hover:to-orange-700 transition-all">
                 🔗 Link Coming Soon
-              
-            
+              </button>
+            </div>
           ))}
-        
+        </div>
 
         {/* No Results */}
         {filteredData.length === 0 && (
-          
-            
-            
+          <div className="text-center py-12">
+            <BookOpen size={64} className="text-amber-300 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-amber-800 mb-2">
               No manhwa found
-            
-            Try adjusting your search or filters
-          
+            </h3>
+            <p className="text-gray-600">Try adjusting your search or filters</p>
+          </div>
         )}
 
         {/* Tribute Section */}
-        
-          
+        <div className="mt-12 bg-gradient-to-r from-amber-100 to-orange-100 rounded-xl border-2 border-amber-300 p-8 text-center">
+          <h2 className="text-2xl font-bold text-amber-800 mb-4 font-serif">
             ⚔️ Tribute to the Original Archive ⚔️
-          
-          
+          </h2>
+          <p className="text-amber-800 mb-4">
             This database is inspired by the amazing community-driven manhwa spreadsheet
-          
-          
+          </p>
+          <div className="flex gap-4 justify-center flex-wrap">
             
+              href="https://www.reddit.com/r/manhwa/comments/1ioddo5/final_manhwa_list_spreadsheet/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 transition-colors"
+            >
               📱 Reddit Thread
+            </a>
             
-            
+              href="https://docs.google.com/spreadsheets/d/1ZluFOVtJCv-cQLXWhmCLNoZFIMLV0eTrqozwyEb1zw8/edit?usp=drivesdk"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+            >
               📊 Google Sheet
-            
-          
-        
-      
-    
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
