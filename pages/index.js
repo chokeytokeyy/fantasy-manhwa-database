@@ -35,11 +35,39 @@ const ManhwaDatabase = () => {
 
   // Load sample data on component mount and auto-connect to database
   useEffect(() => {
-    loadSampleData();
-    // Auto-connect to database if credentials are available
-    if (supabaseConfig.url && supabaseConfig.anonKey) {
-      autoConnectToDatabase();
-    }
+    const initializeApp = async () => {
+      // Auto-connect to database if credentials are available
+      if (supabaseConfig.url && supabaseConfig.anonKey) {
+        setDbLoading(true);
+        try {
+          const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=count`, {
+            headers: {
+              'apikey': supabaseConfig.anonKey,
+              'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            setDbConnected(true);
+            await loadDataFromDatabase(); // Load database data
+            console.log('Auto-connected to database and loaded data successfully');
+          } else {
+            console.log('Auto-connection failed, loading sample data');
+            loadSampleData(); // Fallback to sample data
+          }
+        } catch (error) {
+          console.log('Auto-connection failed, loading sample data:', error.message);
+          loadSampleData(); // Fallback to sample data
+        } finally {
+          setDbLoading(false);
+        }
+      } else {
+        loadSampleData(); // Load sample data if no database credentials
+      }
+    };
+
+    initializeApp();
   }, []);
 
   const autoConnectToDatabase = async () => {
@@ -416,8 +444,8 @@ const ManhwaDatabase = () => {
 
       if (response.ok) {
         setDbConnected(true);
-        await loadDataFromDatabase();
-        alert('Successfully connected to database!');
+        await loadDataFromDatabase(); // Automatically load data after connecting
+        alert('Successfully connected to database and loaded data!');
       } else {
         throw new Error(`Connection failed: ${response.status}`);
       }
@@ -432,7 +460,9 @@ const ManhwaDatabase = () => {
   const loadDataFromDatabase = async () => {
     if (!dbConnected || !supabaseConfig.url || !supabaseConfig.anonKey) return;
 
+    setDbLoading(true);
     try {
+      console.log('Loading data from database...');
       const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?select=*`, {
         headers: {
           'apikey': supabaseConfig.anonKey,
@@ -443,6 +473,8 @@ const ManhwaDatabase = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log(`Loaded ${data.length} records from database`);
+        
         const formattedData = data.map(item => ({
           title: item.title || '',
           synopsis: item.synopsis || '',
@@ -458,9 +490,14 @@ const ManhwaDatabase = () => {
         
         const uniqueData = removeDuplicates(formattedData, 'title');
         setManhwaData(uniqueData);
+        console.log(`Set ${uniqueData.length} unique records in app state`);
+      } else {
+        console.error('Failed to load data from database:', response.status);
       }
     } catch (error) {
       console.error('Error loading data from database:', error);
+    } finally {
+      setDbLoading(false);
     }
   };
 
@@ -478,24 +515,40 @@ const ManhwaDatabase = () => {
 
     setDbLoading(true);
     try {
-      // Clear existing data if in admin mode
+      // Improved database clearing for admin mode
       if (adminMode) {
         console.log('Clearing existing database records...');
-        await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
-          method: 'DELETE',
-          headers: {
-            'apikey': supabaseConfig.anonKey,
-            'Authorization': `Bearer ${supabaseConfig.anonKey}`,
-            'Content-Type': 'application/json'
+        try {
+          // Try to delete all records with a proper filter
+          const deleteResponse = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?id=gte.0`, {
+            method: 'DELETE',
+            headers: {
+              'apikey': supabaseConfig.anonKey,
+              'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (deleteResponse.ok) {
+            console.log('Database cleared successfully');
+          } else {
+            console.warn('Database clear failed, will use upsert instead');
           }
-        });
+        } catch (deleteError) {
+          console.warn('Database clear failed, will use upsert instead:', deleteError);
+        }
+        
+        // Wait a moment for database to process
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
-      // Upload in smaller batches with delay between requests
-      const batchSize = 50; // Reduced batch size
+      // Upload in smaller batches with improved error handling
+      const batchSize = 30; // Even smaller batch size
       const totalBatches = Math.ceil(dataForSave.length / batchSize);
       let successfulBatches = 0;
       let failedBatches = 0;
+      let duplicateCount = 0;
+      let actualUploads = 0;
 
       console.log(`Starting upload: ${dataForSave.length} records in ${totalBatches} batches`);
 
@@ -506,7 +559,8 @@ const ManhwaDatabase = () => {
         try {
           console.log(`Uploading batch ${batchNumber}/${totalBatches} (${batch.length} records)...`);
           
-          const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
+          // Try normal POST first
+          let response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
             method: 'POST',
             headers: {
               'apikey': supabaseConfig.anonKey,
@@ -517,18 +571,63 @@ const ManhwaDatabase = () => {
             body: JSON.stringify(batch)
           });
 
+          // If we get duplicate key error, try upsert instead
+          if (response.status === 409) {
+            console.log(`Batch ${batchNumber} has duplicates, trying upsert...`);
+            
+            response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
+              method: 'POST',
+              headers: {
+                'apikey': supabaseConfig.anonKey,
+                'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'resolution=merge-duplicates,return=minimal'
+              },
+              body: JSON.stringify(batch)
+            });
+            
+            if (response.ok) {
+              duplicateCount += batch.length;
+              console.log(`Batch ${batchNumber} upserted successfully (duplicates handled)`);
+            }
+          }
+
           if (!response.ok) {
             const errorText = await response.text();
             console.error(`Batch ${batchNumber} failed:`, response.status, errorText);
             failedBatches++;
+            
+            // Try uploading individual records from failed batch
+            console.log(`Trying individual uploads for batch ${batchNumber}...`);
+            for (const record of batch) {
+              try {
+                const singleResponse = await fetch(`${supabaseConfig.url}/rest/v1/manhwa`, {
+                  method: 'POST',
+                  headers: {
+                    'apikey': supabaseConfig.anonKey,
+                    'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'resolution=merge-duplicates,return=minimal'
+                  },
+                  body: JSON.stringify([record])
+                });
+                
+                if (singleResponse.ok) {
+                  actualUploads++;
+                }
+              } catch (singleError) {
+                console.error('Individual record upload failed:', record.title);
+              }
+            }
           } else {
             console.log(`Batch ${batchNumber} uploaded successfully`);
             successfulBatches++;
+            actualUploads += batch.length;
           }
 
-          // Add delay between batches to prevent rate limiting
+          // Add delay between batches
           if (i + batchSize < dataForSave.length) {
-            await new Promise(resolve => setTimeout(resolve, 500)); // 500ms delay
+            await new Promise(resolve => setTimeout(resolve, 750)); // Increased delay
           }
         } catch (error) {
           console.error(`Error uploading batch ${batchNumber}:`, error);
@@ -536,13 +635,11 @@ const ManhwaDatabase = () => {
         }
       }
 
-      const totalRecordsAttempted = successfulBatches * batchSize + (dataForSave.length % batchSize || 0);
-      const successfulRecords = successfulBatches * batchSize + (failedBatches === 0 && dataForSave.length % batchSize ? dataForSave.length % batchSize : 0);
-
+      // Provide detailed feedback
       if (failedBatches === 0) {
-        alert(`✅ Successfully saved all ${dataForSave.length} manhwa entries to database!`);
+        alert(`✅ Successfully uploaded all ${dataForSave.length} manhwa entries!\n${duplicateCount > 0 ? `• ${duplicateCount} duplicates were updated\n` : ''}• All records processed successfully`);
       } else {
-        alert(`⚠️ Upload completed with issues:\n- Successful batches: ${successfulBatches}/${totalBatches}\n- Failed batches: ${failedBatches}\n- Estimated successful records: ~${successfulRecords}\n\nCheck console for details.`);
+        alert(`⚠️ Upload completed:\n• Successful batches: ${successfulBatches}/${totalBatches}\n• Failed batches: ${failedBatches}\n• Records uploaded: ~${actualUploads}\n• Duplicates handled: ${duplicateCount}\n\nSome records may have been uploaded individually. Check console for details.`);
       }
     } catch (error) {
       alert(`❌ Error saving to database: ${error.message}`);
@@ -1035,7 +1132,7 @@ const ManhwaDatabase = () => {
         )}
 
         {/* Upload Section */}
-        {showUploadSection && (
+        {showUploadSection && manhwaData.length <= 3 && (
           <div className="bg-slate-800/90 backdrop-blur-sm rounded-xl p-4 md:p-6 mb-6 shadow-lg border border-slate-600">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -1044,7 +1141,10 @@ const ManhwaDatabase = () => {
                   Upload Manhwa Database
                 </h3>
                 <p className="text-sm text-gray-300">
-                  First download the database file, then upload it here to load the manhwa collection.
+                  {dbConnected ? 
+                    "Database is connected but appears empty. Upload your CSV file to populate it." :
+                    "First download the database file, then upload it here to load the manhwa collection."
+                  }
                 </p>
               </div>
               
@@ -1095,14 +1195,14 @@ const ManhwaDatabase = () => {
                 Choose File
               </label>
               <p className="text-sm text-gray-400 mt-3">
-                CSV files only • Data stored locally in your browser
+                CSV files only • {dbConnected ? 'Data will be saved to database' : 'Data stored locally in your browser'}
               </p>
             </div>
           </div>
         )}
 
         {/* Collapsed Upload Button */}
-        {!showUploadSection && (
+        {!showUploadSection && manhwaData.length <= 3 && (
           <div className="mb-6">
             <button
               onClick={() => setShowUploadSection(true)}
