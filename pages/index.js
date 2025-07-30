@@ -33,6 +33,16 @@ const ManhwaDatabase = () => {
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [adminLoading, setAdminLoading] = useState(false);
   const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [showLinkManager, setShowLinkManager] = useState(false);
+  const [linkData, setLinkData] = useState([]);
+  const [selectedManhwaForLinks, setSelectedManhwaForLinks] = useState(null);
+  const [newLinks, setNewLinks] = useState({
+    link1: '',
+    link2: '',
+    link3: ''
+  });
+  const [linkUploadFile, setLinkUploadFile] = useState(null);
+  const [isLinkUploading, setIsLinkUploading] = useState(false);
 
   // Load sample data on component mount and auto-connect to database
   useEffect(() => {
@@ -72,6 +82,7 @@ const ManhwaDatabase = () => {
               
               if (data.length > 0) {
                 const formattedData = data.map(item => ({
+                  id: item.id,
                   title: item.title || '',
                   synopsis: item.synopsis || '',
                   genres: Array.isArray(item.genres) ? item.genres : [],
@@ -81,7 +92,10 @@ const ManhwaDatabase = () => {
                   chapters: item.chapters || '',
                   status: item.status || '',
                   rating: item.rating || '',
-                  thumbnail: item.thumbnail || ''
+                  thumbnail: item.thumbnail || '',
+                  link1: item.link1 || '',
+                  link2: item.link2 || '',
+                  link3: item.link3 || ''
                 }));
                 
                 const uniqueData = removeDuplicates(formattedData, 'title');
@@ -113,6 +127,7 @@ const ManhwaDatabase = () => {
   const loadSampleData = () => {
     const sampleData = [
       {
+        id: 1,
         title: "0.0000001% Demon King",
         synopsis: "The 72 Demon Kings, who received the order to destroy the earth, each went through a trial by the Great Demon King Astrea.",
         genres: ["Action", "Comedy", "Fantasy", "Shounen"],
@@ -122,9 +137,13 @@ const ManhwaDatabase = () => {
         chapters: "Less than 100",
         status: "Ongoing",
         rating: "Decent",
-        thumbnail: ""
+        thumbnail: "",
+        link1: "",
+        link2: "",
+        link3: ""
       },
       {
+        id: 2,
         title: "1 Second",
         synopsis: "Every second counts when you're a first responder. But what if you could see a glimpse into the future?",
         genres: ["Action", "Drama", "Supernatural"],
@@ -134,9 +153,13 @@ const ManhwaDatabase = () => {
         chapters: "Less than 100",
         status: "Unknown",
         rating: "Good",
-        thumbnail: ""
+        thumbnail: "",
+        link1: "",
+        link2: "",
+        link3: ""
       },
       {
+        id: 3,
         title: "1331",
         synopsis: "Yoo Min, a full time department store worker, begins to feel skeptical about her own life.",
         genres: ["Drama", "Fantasy", "Horror", "Psychological"],
@@ -146,7 +169,10 @@ const ManhwaDatabase = () => {
         chapters: "71",
         status: "Complete",
         rating: "Recommended",
-        thumbnail: ""
+        thumbnail: "",
+        link1: "",
+        link2: "",
+        link3: ""
       }
     ];
     setManhwaData(sampleData);
@@ -198,6 +224,184 @@ const ManhwaDatabase = () => {
   const adminLogout = () => {
     setAdminMode(false);
     setAdminCredentials({ username: '', password: '' });
+  };
+
+  // Link Management Functions
+  const handleLinkUpload = async (file) => {
+    if (!file) return;
+    
+    setIsLinkUploading(true);
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      if (lines.length === 0) {
+        alert('Empty file');
+        return;
+      }
+
+      // Parse header (works for both CSV and TXT with comma separation)
+      const header = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
+      const titleIndex = header.indexOf('Title');
+      const link1Index = header.indexOf('Link1');
+      const link2Index = header.indexOf('Link2');
+      const link3Index = header.indexOf('Link3');
+
+      if (titleIndex === -1) {
+        alert('Title column not found in file. Please ensure your file has a header row with "Title" column.');
+        return;
+      }
+
+      const linkUpdates = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        // Handle both CSV and TXT formats with comma separation
+        const values = lines[i].split(',').map(v => v.replace(/"/g, '').trim());
+        const title = values[titleIndex];
+        
+        if (title) {
+          linkUpdates.push({
+            title,
+            link1: link1Index !== -1 ? values[link1Index] || '' : '',
+            link2: link2Index !== -1 ? values[link2Index] || '' : '',
+            link3: link3Index !== -1 ? values[link3Index] || '' : ''
+          });
+        }
+      }
+
+      console.log('Parsed link updates:', linkUpdates);
+
+      if (linkUpdates.length === 0) {
+        alert('No valid data found in file. Please check the format.');
+        return;
+      }
+
+      // Update database if connected
+      if (dbConnected && supabaseConfig.url && supabaseConfig.anonKey) {
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const update of linkUpdates) {
+          try {
+            const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?title=eq.${encodeURIComponent(update.title)}`, {
+              method: 'PATCH',
+              headers: {
+                'apikey': supabaseConfig.anonKey,
+                'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal'
+              },
+              body: JSON.stringify({
+                link1: update.link1,
+                link2: update.link2,
+                link3: update.link3
+              })
+            });
+
+            if (response.ok) {
+              successCount++;
+            } else {
+              errorCount++;
+              console.error(`Failed to update ${update.title}:`, response.status);
+            }
+          } catch (error) {
+            errorCount++;
+            console.error(`Error updating ${update.title}:`, error);
+          }
+        }
+
+        alert(`Link upload complete!\nSuccessful: ${successCount}\nErrors: ${errorCount}\n\nNote: Errors may occur if manhwa titles don't exactly match database entries.`);
+        
+        // Reload data to reflect changes
+        if (successCount > 0) {
+          window.location.reload();
+        }
+      } else {
+        // Update local data only
+        setManhwaData(prevData => 
+          prevData.map(manhwa => {
+            const linkUpdate = linkUpdates.find(update => 
+              update.title.toLowerCase().trim() === manhwa.title.toLowerCase().trim()
+            );
+            
+            if (linkUpdate) {
+              return {
+                ...manhwa,
+                link1: linkUpdate.link1,
+                link2: linkUpdate.link2,
+                link3: linkUpdate.link3
+              };
+            }
+            return manhwa;
+          })
+        );
+        
+        alert(`Updated ${linkUpdates.length} manhwa entries with links!`);
+      }
+
+    } catch (error) {
+      console.error('Error processing link file:', error);
+      alert('Error processing file: ' + error.message);
+    } finally {
+      setIsLinkUploading(false);
+      setLinkUploadFile(null);
+    }
+  };
+
+  const updateManhwaLinks = async (manhwaId, links) => {
+    if (!dbConnected || !supabaseConfig.url || !supabaseConfig.anonKey) {
+      alert('Database not connected');
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${supabaseConfig.url}/rest/v1/manhwa?id=eq.${manhwaId}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': supabaseConfig.anonKey,
+          'Authorization': `Bearer ${supabaseConfig.anonKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          link1: links.link1,
+          link2: links.link2,
+          link3: links.link3
+        })
+      });
+
+      if (response.ok) {
+        // Update local data
+        setManhwaData(prevData => 
+          prevData.map(manhwa => 
+            manhwa.id === manhwaId 
+              ? { ...manhwa, link1: links.link1, link2: links.link2, link3: links.link3 }
+              : manhwa
+          )
+        );
+        return true;
+      } else {
+        console.error('Failed to update links:', response.status);
+        return false;
+      }
+    } catch (error) {
+      console.error('Error updating links:', error);
+      return false;
+    }
+  };
+
+  const handleSaveLinks = async () => {
+    if (!selectedManhwaForLinks) return;
+
+    const success = await updateManhwaLinks(selectedManhwaForLinks.id, newLinks);
+    
+    if (success) {
+      alert('Links updated successfully!');
+      setSelectedManhwaForLinks(null);
+      setNewLinks({ link1: '', link2: '', link3: '' });
+    } else {
+      alert('Failed to update links');
+    }
   };
 
   const filteredData = manhwaData.filter(manhwa => {
@@ -482,6 +686,185 @@ const ManhwaDatabase = () => {
         </div>
       )}
 
+      {/* Link Manager Modal */}
+      {showLinkManager && adminMode && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-800 rounded-2xl p-6 max-w-4xl w-full shadow-2xl border border-slate-600 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <div className="flex items-center gap-3">
+                <Database size={32} className="text-purple-400" />
+                <h2 className="text-2xl font-bold text-white">Link Manager</h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowLinkManager(false);
+                  setSelectedManhwaForLinks(null);
+                  setNewLinks({ link1: '', link2: '', link3: '' });
+                }}
+                className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <X size={24} className="text-gray-400" />
+              </button>
+            </div>
+
+            {/* Bulk Upload Section */}
+            <div className="bg-slate-700/50 rounded-lg p-4 mb-6 border border-slate-600">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Upload size={20} className="text-blue-400" />
+                Bulk Upload Links (CSV/TXT)
+              </h3>
+              
+              <div className="space-y-4">
+                <div className="bg-blue-600/20 border border-blue-500 rounded-lg p-3">
+                  <p className="text-blue-200 text-sm mb-2">
+                    <strong>File Format (CSV or TXT):</strong> Title,Link1,Link2,Link3
+                  </p>
+                  <p className="text-blue-200 text-sm mb-2">
+                    Upload a CSV or TXT file with manhwa titles and their corresponding links.
+                  </p>
+                  <div className="bg-slate-700/50 p-2 rounded text-xs text-blue-100 font-mono">
+                    Title,Link1,Link2,Link3<br/>
+                    "Manhwa Title 1","https://site1.com/link1","https://site2.com/link2",""<br/>
+                    "Manhwa Title 2","https://site1.com/link3","https://site2.com/link4","https://site3.com/link5"
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <input
+                    type="file"
+                    accept=".csv,.txt"
+                    onChange={(e) => setLinkUploadFile(e.target.files[0])}
+                    className="flex-1 text-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-600 file:text-white hover:file:bg-blue-500"
+                  />
+                  
+                  <button
+                    onClick={() => linkUploadFile && handleLinkUpload(linkUploadFile)}
+                    disabled={!linkUploadFile || isLinkUploading}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLinkUploading ? 'Uploading...' : 'Upload Links'}
+                  </button>
+                </div>
+                
+                <div className="bg-yellow-600/20 border border-yellow-500 rounded-lg p-3">
+                  <p className="text-yellow-200 text-xs">
+                    <strong>⚠️ Important:</strong> Manhwa titles in your file must exactly match the titles in the database for successful updates. Case-sensitive matching is used.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Individual Edit Section */}
+            <div className="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <FileText size={20} className="text-green-400" />
+                Edit Individual Links
+              </h3>
+              
+              {!selectedManhwaForLinks ? (
+                <div>
+                  <p className="text-gray-300 mb-4">Select a manhwa to edit its links:</p>
+                  <div className="max-h-60 overflow-y-auto space-y-2">
+                    {manhwaData.map((manhwa, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          setSelectedManhwaForLinks(manhwa);
+                          setNewLinks({
+                            link1: manhwa.link1 || '',
+                            link2: manhwa.link2 || '',
+                            link3: manhwa.link3 || ''
+                          });
+                        }}
+                        className="w-full text-left p-3 bg-slate-600 hover:bg-slate-500 rounded-lg transition-colors border border-slate-500"
+                      >
+                        <div className="text-white font-medium">{manhwa.title}</div>
+                        <div className="text-gray-300 text-sm">
+                          Links: {[manhwa.link1, manhwa.link2, manhwa.link3].filter(Boolean).length}/3
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="mb-4">
+                    <h4 className="text-white font-medium mb-2">Editing: {selectedManhwaForLinks.title}</h4>
+                    <button
+                      onClick={() => {
+                        setSelectedManhwaForLinks(null);
+                        setNewLinks({ link1: '', link2: '', link3: '' });
+                      }}
+                      className="text-blue-400 hover:text-blue-300 text-sm"
+                    >
+                      ← Back to list
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-2">Link 1</label>
+                      <input
+                        type="url"
+                        value={newLinks.link1}
+                        onChange={(e) => setNewLinks(prev => ({ ...prev, link1: e.target.value }))}
+                        placeholder="https://example.com/manhwa-link-1"
+                        className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-2">Link 2</label>
+                      <input
+                        type="url"
+                        value={newLinks.link2}
+                        onChange={(e) => setNewLinks(prev => ({ ...prev, link2: e.target.value }))}
+                        placeholder="https://example.com/manhwa-link-2"
+                        className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-2">Link 3</label>
+                      <input
+                        type="url"
+                        value={newLinks.link3}
+                        onChange={(e) => setNewLinks(prev => ({ ...prev, link3: e.target.value }))}
+                        placeholder="https://example.com/manhwa-link-3"
+                        className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                      />
+                    </div>
+                    
+                    <div className="flex gap-4">
+                      <button
+                        onClick={handleSaveLinks}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Save size={16} />
+                        Save Links
+                      </button>
+                      
+                      <button
+                        onClick={() => {
+                          setNewLinks({
+                            link1: selectedManhwaForLinks.link1 || '',
+                            link2: selectedManhwaForLinks.link2 || '',
+                            link3: selectedManhwaForLinks.link3 || ''
+                          });
+                        }}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-500 transition-colors"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-slate-900/90 backdrop-blur-sm text-white p-4 shadow-lg border-b border-slate-700">
         <div className="max-w-6xl mx-auto">
@@ -493,10 +876,20 @@ const ManhwaDatabase = () => {
             
             <div className="flex items-center gap-4">
               {adminMode && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-yellow-600/20 border border-yellow-500 rounded-lg">
-                  <Shield size={16} className="text-yellow-400" />
-                  <span className="text-yellow-400 text-sm font-medium">Admin Mode</span>
-                </div>
+                <>
+                  <div className="flex items-center gap-2 px-3 py-2 bg-yellow-600/20 border border-yellow-500 rounded-lg">
+                    <Shield size={16} className="text-yellow-400" />
+                    <span className="text-yellow-400 text-sm font-medium">Admin Mode</span>
+                  </div>
+                  
+                  <button
+                    onClick={() => setShowLinkManager(true)}
+                    className="flex items-center gap-2 px-3 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-500 transition-colors text-sm"
+                  >
+                    <Database size={16} />
+                    Manage Links
+                  </button>
+                </>
               )}
 
               <div className="flex items-center gap-2">
@@ -758,6 +1151,45 @@ const ManhwaDatabase = () => {
                     {manhwa.status}
                   </span>
                 </div>
+
+                {/* Reading Links */}
+                {(manhwa.link1 || manhwa.link2 || manhwa.link3) && (
+                  <div className="mt-4 pt-4 border-t border-slate-600">
+                    <div className="text-xs font-semibold text-gray-400 mb-2">📖 Reading Links</div>
+                    <div className="flex flex-wrap gap-2">
+                      {manhwa.link1 && (
+                        <a
+                          href={manhwa.link1}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg font-medium transition-colors"
+                        >
+                          Source 1
+                        </a>
+                      )}
+                      {manhwa.link2 && (
+                        <a
+                          href={manhwa.link2}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-lg font-medium transition-colors"
+                        >
+                          Source 2
+                        </a>
+                      )}
+                      {manhwa.link3 && (
+                        <a
+                          href={manhwa.link3}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-xs rounded-lg font-medium transition-colors"
+                        >
+                          Source 3
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}
