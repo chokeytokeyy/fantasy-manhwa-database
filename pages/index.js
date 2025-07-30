@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Upload, BookOpen, Star, Calendar, Hash, Filter, X, FileText, Database, Wifi, WifiOff, Save, Download, Lock, Unlock, User, Shield } from 'lucide-react';
+import { Search, Upload, BookOpen, Star, Calendar, Hash, Filter, X, FileText, Database, Wifi, WifiOff, Save, Download, Lock, Unlock, User, Shield, ExternalLink } from 'lucide-react';
 
 const ManhwaDatabase = () => {
   const [manhwaData, setManhwaData] = useState([]);
@@ -12,19 +12,14 @@ const ManhwaDatabase = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
   const [showWelcomeModal, setShowWelcomeModal] = useState(true);
   const [expandedDescriptions, setExpandedDescriptions] = useState(new Set());
-  const [thumbnailData, setThumbnailData] = useState(new Map());
-  const [isThumbnailLoading, setIsThumbnailLoading] = useState(false);
-  const [showUploadSection, setShowUploadSection] = useState(true);
   const [dbConnected, setDbConnected] = useState(false);
   const [dbLoading, setDbLoading] = useState(false);
   const [supabaseConfig, setSupabaseConfig] = useState({
     url: 'https://wemlzcwuqckptmcnjlng.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndlbWx6Y3d1cWNrcHRtY25qbG5nIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM4MTI3MzEsImV4cCI6MjA2OTM4ODczMX0.q6JHd2SwmxKKRjrTuYsCBLgVpS8AxnJ95mrOeYlwrWI'
   });
-  const [showDbConfig, setShowDbConfig] = useState(false);
   const [adminMode, setAdminMode] = useState(false);
   const [adminCredentials, setAdminCredentials] = useState({
     username: '',
@@ -34,15 +29,43 @@ const ManhwaDatabase = () => {
   const [adminLoading, setAdminLoading] = useState(false);
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [showLinkManager, setShowLinkManager] = useState(false);
-  const [linkData, setLinkData] = useState([]);
   const [selectedManhwaForLinks, setSelectedManhwaForLinks] = useState(null);
   const [newLinks, setNewLinks] = useState({
-    link1: '',
-    link2: '',
-    link3: ''
+    asuracomic: '',
+    arcanescans: '',
+    toongod: '',
+    kingofshojo: ''
   });
   const [linkUploadFile, setLinkUploadFile] = useState(null);
   const [isLinkUploading, setIsLinkUploading] = useState(false);
+
+  // Website configurations for search links
+  const websites = [
+    { 
+      key: 'asuracomic', 
+      name: 'AsuraComic', 
+      color: 'bg-red-600 hover:bg-red-500',
+      searchUrl: 'https://asuracomic.net/series?page=1&name='
+    },
+    { 
+      key: 'arcanescans', 
+      name: 'ArcaneScans', 
+      color: 'bg-purple-600 hover:bg-purple-500',
+      searchUrl: 'https://arcanescans.com/?s='
+    },
+    { 
+      key: 'toongod', 
+      name: 'ToonGod', 
+      color: 'bg-blue-600 hover:bg-blue-500',
+      searchUrl: 'https://www.toongod.org/?s='
+    },
+    { 
+      key: 'kingofshojo', 
+      name: 'KingOfShojo', 
+      color: 'bg-green-600 hover:bg-green-500',
+      searchUrl: 'https://kingofshojo.com/?s='
+    }
+  ];
 
   // Load sample data on component mount and auto-connect to database
   useEffect(() => {
@@ -93,9 +116,10 @@ const ManhwaDatabase = () => {
                   status: item.status || '',
                   rating: item.rating || '',
                   thumbnail: item.thumbnail || '',
-                  link1: item.link1 || '',
-                  link2: item.link2 || '',
-                  link3: item.link3 || ''
+                  asuracomic: item.asuracomic || '',
+                  arcanescans: item.arcanescans || '',
+                  toongod: item.toongod || '',
+                  kingofshojo: item.kingofshojo || ''
                 }));
                 
                 const uniqueData = removeDuplicates(formattedData, 'title');
@@ -138,9 +162,10 @@ const ManhwaDatabase = () => {
         status: "Ongoing",
         rating: "Decent",
         thumbnail: "",
-        link1: "",
-        link2: "",
-        link3: ""
+        asuracomic: "",
+        arcanescans: "",
+        toongod: "",
+        kingofshojo: ""
       },
       {
         id: 2,
@@ -154,9 +179,10 @@ const ManhwaDatabase = () => {
         status: "Unknown",
         rating: "Good",
         thumbnail: "",
-        link1: "",
-        link2: "",
-        link3: ""
+        asuracomic: "",
+        arcanescans: "",
+        toongod: "",
+        kingofshojo: ""
       },
       {
         id: 3,
@@ -166,13 +192,14 @@ const ManhwaDatabase = () => {
         categories: ["Apocalypse", "Female Protagonist", "Survival"],
         authors: ["Bora Giraffe"],
         year_released: "2022",
-        chapters: "71",
+        chapters: "271",
         status: "Complete",
         rating: "Recommended",
         thumbnail: "",
-        link1: "",
-        link2: "",
-        link3: ""
+        asuracomic: "",
+        arcanescans: "",
+        toongod: "",
+        kingofshojo: ""
       }
     ];
     setManhwaData(sampleData);
@@ -226,6 +253,29 @@ const ManhwaDatabase = () => {
     setAdminCredentials({ username: '', password: '' });
   };
 
+  // Function to categorize chapters
+  const categorizeChapters = (chapterString) => {
+    if (!chapterString || chapterString.toLowerCase().includes('unknown')) return 'Unknown';
+    
+    // Handle existing "Less than 100" format
+    if (chapterString.toLowerCase().includes('less than 100') || 
+        chapterString.toLowerCase().includes('<100')) {
+      return 'Less than 100';
+    }
+    
+    // Extract number from chapter string
+    const match = chapterString.match(/\d+/);
+    if (!match) return 'Unknown';
+    
+    const num = parseInt(match[0]);
+    if (num < 100) return 'Less than 100';
+    if (num < 200) return '100-199';
+    if (num < 300) return '200-299';
+    if (num < 400) return '300-399';
+    if (num < 500) return '400-499';
+    return '500+';
+  };
+
   // Link Management Functions
   const handleLinkUpload = async (file) => {
     if (!file) return;
@@ -243,9 +293,10 @@ const ManhwaDatabase = () => {
       // Parse header (works for both CSV and TXT with comma separation)
       const header = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
       const titleIndex = header.indexOf('Title');
-      const link1Index = header.indexOf('Link1');
-      const link2Index = header.indexOf('Link2');
-      const link3Index = header.indexOf('Link3');
+      const asuracomicIndex = header.indexOf('AsuraComic');
+      const arcanescansIndex = header.indexOf('ArcaneScans');
+      const toongodIndex = header.indexOf('ToonGod');
+      const kingofshojoIndex = header.indexOf('KingOfShojo');
 
       if (titleIndex === -1) {
         alert('Title column not found in file. Please ensure your file has a header row with "Title" column.');
@@ -262,9 +313,10 @@ const ManhwaDatabase = () => {
         if (title) {
           linkUpdates.push({
             title,
-            link1: link1Index !== -1 ? values[link1Index] || '' : '',
-            link2: link2Index !== -1 ? values[link2Index] || '' : '',
-            link3: link3Index !== -1 ? values[link3Index] || '' : ''
+            asuracomic: asuracomicIndex !== -1 ? values[asuracomicIndex] || '' : '',
+            arcanescans: arcanescansIndex !== -1 ? values[arcanescansIndex] || '' : '',
+            toongod: toongodIndex !== -1 ? values[toongodIndex] || '' : '',
+            kingofshojo: kingofshojoIndex !== -1 ? values[kingofshojoIndex] || '' : ''
           });
         }
       }
@@ -292,9 +344,10 @@ const ManhwaDatabase = () => {
                 'Prefer': 'return=minimal'
               },
               body: JSON.stringify({
-                link1: update.link1,
-                link2: update.link2,
-                link3: update.link3
+                asuracomic: update.asuracomic,
+                arcanescans: update.arcanescans,
+                toongod: update.toongod,
+                kingofshojo: update.kingofshojo
               })
             });
 
@@ -327,9 +380,10 @@ const ManhwaDatabase = () => {
             if (linkUpdate) {
               return {
                 ...manhwa,
-                link1: linkUpdate.link1,
-                link2: linkUpdate.link2,
-                link3: linkUpdate.link3
+                asuracomic: linkUpdate.asuracomic,
+                arcanescans: linkUpdate.arcanescans,
+                toongod: linkUpdate.toongod,
+                kingofshojo: linkUpdate.kingofshojo
               };
             }
             return manhwa;
@@ -364,9 +418,10 @@ const ManhwaDatabase = () => {
           'Prefer': 'return=minimal'
         },
         body: JSON.stringify({
-          link1: links.link1,
-          link2: links.link2,
-          link3: links.link3
+          asuracomic: links.asuracomic,
+          arcanescans: links.arcanescans,
+          toongod: links.toongod,
+          kingofshojo: links.kingofshojo
         })
       });
 
@@ -375,7 +430,13 @@ const ManhwaDatabase = () => {
         setManhwaData(prevData => 
           prevData.map(manhwa => 
             manhwa.id === manhwaId 
-              ? { ...manhwa, link1: links.link1, link2: links.link2, link3: links.link3 }
+              ? { 
+                  ...manhwa, 
+                  asuracomic: links.asuracomic, 
+                  arcanescans: links.arcanescans, 
+                  toongod: links.toongod, 
+                  kingofshojo: links.kingofshojo 
+                }
               : manhwa
           )
         );
@@ -398,7 +459,7 @@ const ManhwaDatabase = () => {
     if (success) {
       alert('Links updated successfully!');
       setSelectedManhwaForLinks(null);
-      setNewLinks({ link1: '', link2: '', link3: '' });
+      setNewLinks({ asuracomic: '', arcanescans: '', toongod: '', kingofshojo: '' });
     } else {
       alert('Failed to update links');
     }
@@ -421,7 +482,7 @@ const ManhwaDatabase = () => {
       selectedFilters.rating.includes(manhwa.rating);
     
     const chapterMatch = selectedFilters.chapters.length === 0 || 
-      selectedFilters.chapters.includes(manhwa.chapters);
+      selectedFilters.chapters.includes(categorizeChapters(manhwa.chapters));
 
     return searchMatch && genreMatch && categoryMatch && ratingMatch && chapterMatch;
   });
@@ -438,6 +499,18 @@ const ManhwaDatabase = () => {
       }
     });
     return Array.from(values).sort();
+  };
+
+  const getUniqueChapterRanges = () => {
+    const ranges = new Set();
+    manhwaData.forEach(manhwa => {
+      const category = categorizeChapters(manhwa.chapters);
+      ranges.add(category);
+    });
+    return Array.from(ranges).sort((a, b) => {
+      const order = ['Less than 100', '100-199', '200-299', '300-399', '400-499', '500+', 'Unknown'];
+      return order.indexOf(a) - order.indexOf(b);
+    });
   };
 
   const toggleFilter = (filterType, value) => {
@@ -511,7 +584,7 @@ const ManhwaDatabase = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900">
-      {/* NEW Welcome Modal - Mobile Optimized */}
+      {/* Welcome Modal - Mobile Optimized */}
       {showWelcomeModal && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-3">
           <div className="bg-slate-800 rounded-2xl p-4 sm:p-6 max-w-lg w-full shadow-2xl border border-slate-600 mx-3 max-h-[90vh] overflow-y-auto">
@@ -699,7 +772,7 @@ const ManhwaDatabase = () => {
                 onClick={() => {
                   setShowLinkManager(false);
                   setSelectedManhwaForLinks(null);
-                  setNewLinks({ link1: '', link2: '', link3: '' });
+                  setNewLinks({ asuracomic: '', arcanescans: '', toongod: '', kingofshojo: '' });
                 }}
                 className="p-2 hover:bg-slate-700 rounded-lg transition-colors"
               >
@@ -717,15 +790,14 @@ const ManhwaDatabase = () => {
               <div className="space-y-4">
                 <div className="bg-blue-600/20 border border-blue-500 rounded-lg p-3">
                   <p className="text-blue-200 text-sm mb-2">
-                    <strong>File Format (CSV or TXT):</strong> Title,Link1,Link2,Link3
+                    <strong>File Format (CSV or TXT):</strong> Title,AsuraComic,ArcaneScans,ToonGod,KingOfShojo
                   </p>
                   <p className="text-blue-200 text-sm mb-2">
                     Upload a CSV or TXT file with manhwa titles and their corresponding links.
                   </p>
                   <div className="bg-slate-700/50 p-2 rounded text-xs text-blue-100 font-mono">
-                    Title,Link1,Link2,Link3<br/>
-                    "Manhwa Title 1","https://site1.com/link1","https://site2.com/link2",""<br/>
-                    "Manhwa Title 2","https://site1.com/link3","https://site2.com/link4","https://site3.com/link5"
+                    Title,AsuraComic,ArcaneScans,ToonGod,KingOfShojo<br/>
+                    "Solo Leveling","https://asuracomic.net/...","https://arcanescans.com/...","","https://kingofshojo.com/..."
                   </div>
                 </div>
                 
@@ -771,16 +843,17 @@ const ManhwaDatabase = () => {
                         onClick={() => {
                           setSelectedManhwaForLinks(manhwa);
                           setNewLinks({
-                            link1: manhwa.link1 || '',
-                            link2: manhwa.link2 || '',
-                            link3: manhwa.link3 || ''
+                            asuracomic: manhwa.asuracomic || '',
+                            arcanescans: manhwa.arcanescans || '',
+                            toongod: manhwa.toongod || '',
+                            kingofshojo: manhwa.kingofshojo || ''
                           });
                         }}
                         className="w-full text-left p-3 bg-slate-600 hover:bg-slate-500 rounded-lg transition-colors border border-slate-500"
                       >
                         <div className="text-white font-medium">{manhwa.title}</div>
                         <div className="text-gray-300 text-sm">
-                          Links: {[manhwa.link1, manhwa.link2, manhwa.link3].filter(Boolean).length}/3
+                          Links: {[manhwa.asuracomic, manhwa.arcanescans, manhwa.toongod, manhwa.kingofshojo].filter(Boolean).length}/4
                         </div>
                       </button>
                     ))}
@@ -793,7 +866,7 @@ const ManhwaDatabase = () => {
                     <button
                       onClick={() => {
                         setSelectedManhwaForLinks(null);
-                        setNewLinks({ link1: '', link2: '', link3: '' });
+                        setNewLinks({ asuracomic: '', arcanescans: '', toongod: '', kingofshojo: '' });
                       }}
                       className="text-blue-400 hover:text-blue-300 text-sm"
                     >
@@ -802,38 +875,18 @@ const ManhwaDatabase = () => {
                   </div>
                   
                   <div className="space-y-4">
-                    <div>
-                      <label className="block text-white text-sm font-medium mb-2">Link 1</label>
-                      <input
-                        type="url"
-                        value={newLinks.link1}
-                        onChange={(e) => setNewLinks(prev => ({ ...prev, link1: e.target.value }))}
-                        placeholder="https://example.com/manhwa-link-1"
-                        className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white text-sm font-medium mb-2">Link 2</label>
-                      <input
-                        type="url"
-                        value={newLinks.link2}
-                        onChange={(e) => setNewLinks(prev => ({ ...prev, link2: e.target.value }))}
-                        placeholder="https://example.com/manhwa-link-2"
-                        className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white text-sm font-medium mb-2">Link 3</label>
-                      <input
-                        type="url"
-                        value={newLinks.link3}
-                        onChange={(e) => setNewLinks(prev => ({ ...prev, link3: e.target.value }))}
-                        placeholder="https://example.com/manhwa-link-3"
-                        className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
-                      />
-                    </div>
+                    {websites.map((site) => (
+                      <div key={site.key}>
+                        <label className="block text-white text-sm font-medium mb-2">{site.name}</label>
+                        <input
+                          type="url"
+                          value={newLinks[site.key]}
+                          onChange={(e) => setNewLinks(prev => ({ ...prev, [site.key]: e.target.value }))}
+                          placeholder={`https://${site.name.toLowerCase()}.com/manhwa-link`}
+                          className="w-full px-3 py-2 bg-slate-600 border border-slate-500 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                        />
+                      </div>
+                    ))}
                     
                     <div className="flex gap-4">
                       <button
@@ -847,9 +900,10 @@ const ManhwaDatabase = () => {
                       <button
                         onClick={() => {
                           setNewLinks({
-                            link1: selectedManhwaForLinks.link1 || '',
-                            link2: selectedManhwaForLinks.link2 || '',
-                            link3: selectedManhwaForLinks.link3 || ''
+                            asuracomic: selectedManhwaForLinks.asuracomic || '',
+                            arcanescans: selectedManhwaForLinks.arcanescans || '',
+                            toongod: selectedManhwaForLinks.toongod || '',
+                            kingofshojo: selectedManhwaForLinks.kingofshojo || ''
                           });
                         }}
                         className="px-4 py-2 bg-gray-600 text-white rounded-lg font-medium hover:bg-gray-500 transition-colors"
@@ -1031,17 +1085,17 @@ const ManhwaDatabase = () => {
               <div>
                 <h4 className="font-semibold text-white mb-2 text-sm">Chapters</h4>
                 <div className="flex flex-wrap gap-1">
-                  {getUniqueValues('chapters').map(chapters => (
+                  {getUniqueChapterRanges().map(range => (
                     <button
-                      key={chapters}
-                      onClick={() => toggleFilter('chapters', chapters)}
+                      key={range}
+                      onClick={() => toggleFilter('chapters', range)}
                       className={`px-2 py-1 text-xs rounded-full border transition-colors ${
-                        selectedFilters.chapters.includes(chapters)
+                        selectedFilters.chapters.includes(range)
                           ? 'bg-green-600 text-white border-green-600'
                           : 'bg-slate-700 text-gray-300 border-slate-500 hover:bg-slate-600'
                       }`}
                     >
-                      {chapters}
+                      {range}
                     </button>
                   ))}
                 </div>
@@ -1152,44 +1206,35 @@ const ManhwaDatabase = () => {
                   </span>
                 </div>
 
-                {/* Reading Links */}
-                {(manhwa.link1 || manhwa.link2 || manhwa.link3) && (
-                  <div className="mt-4 pt-4 border-t border-slate-600">
-                    <div className="text-xs font-semibold text-gray-400 mb-2">📖 Reading Links</div>
-                    <div className="flex flex-wrap gap-2">
-                      {manhwa.link1 && (
-                        <a
-                          href={manhwa.link1}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-lg font-medium transition-colors"
-                        >
-                          Source 1
-                        </a>
-                      )}
-                      {manhwa.link2 && (
-                        <a
-                          href={manhwa.link2}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs rounded-lg font-medium transition-colors"
-                        >
-                          Source 2
-                        </a>
-                      )}
-                      {manhwa.link3 && (
-                        <a
-                          href={manhwa.link3}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-2 bg-green-600 hover:bg-green-500 text-white text-xs rounded-lg font-medium transition-colors"
-                        >
-                          Source 3
-                        </a>
-                      )}
-                    </div>
+                {/* Search Links Section */}
+                <div className="mt-4 pt-4 border-t border-slate-600">
+                  <div className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1">
+                    <ExternalLink size={12} />
+                    Search on Reading Sites
                   </div>
-                )}
+                  <div className="grid grid-cols-2 gap-2">
+                    {websites.map((site) => {
+                      const hasDirectLink = manhwa[site.key] && manhwa[site.key].trim();
+                      const searchQuery = encodeURIComponent(manhwa.title);
+                      const linkUrl = hasDirectLink ? manhwa[site.key] : `${site.searchUrl}${searchQuery}`;
+                      
+                      return (
+                        <a
+                          key={site.key}
+                          href={linkUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`px-2 py-2 ${site.color} text-white text-xs rounded-lg font-medium transition-colors text-center flex items-center justify-center gap-1`}
+                        >
+                          {hasDirectLink ? '📖' : '🔍'} {site.name}
+                        </a>
+                      );
+                    })}
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2 text-center">
+                    📖 = Direct link • 🔍 = Search for title
+                  </div>
+                </div>
               </div>
             </div>
           ))}
